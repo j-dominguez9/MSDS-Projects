@@ -63,7 +63,7 @@ Filtered observations where msrp is between 2001-150000, year after 2000, replac
 cars <- cars %>% filter(msrp != 2000 & msrp < 150000 & year >= 2001) %>% mutate(highway_mpg = ifelse(highway_mpg == 354, 34, highway_mpg))
 # filter further cars <- cars %>% filter(!(year<=2010 & msrp>= 100000))
 ```
-set relevant variables as factors
+set relevant variables as factors. Popularity as factor bc each make shares the same popularity score so it's not really continuous
 ```{r}
 factor_vars <- c("make", "model", "engine_fuel_type", "engine_cylinders", "transmission_type", "driven_wheels", "number_of_doors", "market_category", "vehicle_size", "vehicle_style")
 cars[factor_vars] <- lapply(cars[factor_vars], factor)
@@ -152,6 +152,32 @@ num_corr <- cor(cars[x1], cars[[y1]])
 cnames <- c('year', 'engine_hp', 'highway_mpg', 'city_mpg', 'popularity')
 num_corr <- cbind(num_corr, cnames) %>% as.data.frame()
 num_corr %>% ggplot(aes(x = cnames, y = pearson, color = cnames))+geom_point()+theme_classic()+ggtitle("MSRP correlation with numeric variables")+labs(x = "Numeric Variables", y = 'Correlation')+theme(legend.position='none')
+```
+Numerical variables
+
+msrp. numerical. log transform
+```{r}
+cars %>% ggplot(aes(x=msrp)) + geom_histogram()
+```
+msrp vs. popularity
+```{r}
+cars %>% ggplot(aes(x=popularity, y=msrp)) + geom_point()
+```
+msrp vs. highway_mpg. 
+```{r}
+cars %>% ggplot(aes(x=city_mpg, y=msrp)) + geom_point()
+```
+msrp vs. city_mpg
+```{r}
+cars %>% ggplot(aes(x=highway_mpg, y=msrp)) + geom_point()
+```
+msrp vs year
+```{r}
+cars %>% ggplot(aes(x=year, y=msrp)) + geom_point()
+```
+msrp vs. engine_hp
+```{r}
+cars %>% ggplot(aes(x=engine_hp, y=msrp)) + geom_point()
 ```
 
 ## Objective 1 Analysis
