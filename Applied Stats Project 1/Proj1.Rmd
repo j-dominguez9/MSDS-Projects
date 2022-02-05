@@ -3,10 +3,13 @@ title: "DS 6372 Project 1"
 output: html_document
 ---
 
+## Data Prep
+
 Load the necessary packages
 ```{r}
 library(tidyverse)
 library(janitor)
+library(naniar)
 library(leaps)
 library(olsrr)
 library(caret)
@@ -15,85 +18,147 @@ library(class)
 
 Read in the data, clean variable names
 ```{r}
-msrpDF <- clean_names(read_csv('https://raw.githubusercontent.com/hmlam1/MSDS-Projects/main/Applied%20Stats%20Project%201/Vehicle_MSRP.csv', show_col_types=F))
+cars <- clean_names(read_csv('https://raw.githubusercontent.com/hmlam1/MSDS-Projects/main/Applied%20Stats%20Project%201/Vehicle_MSRP.csv', show_col_types=F))
 ```
 
-Check for missing values for each variable
+Check for missing values for each variable: engine_hp (69), engine_cylinders (30), number_of_doors (6), engine_fuel_type (3)
 ```{r}
-colSums(is.na(msrpDF))
-# cbind(lapply(lapply(cars, is.na), sum))
-#engine fuel type: 3
-#engine HP: 69
-#engine cylinders: 30 
-#Number of doors: 6
-
-unique(msrpDF$engine_fuel_type) # remove at the end
-unique(msrpDF$engine_hp) # continuous so use median for model or year for NA?
-unique(msrpDF$engine_cylinders) # set as categorical, merge 0 and NA together?
-unique(msrpDF$number_of_doors) # google car and input value
-
-# clean data
-msrpDF <- msrpDF %>% mutate(number_of_doors = ifelse(make == 'Tesla' & model == 'Model S' & year == 2016,4,
-        ifelse(make == 'Ferrari' & model == 'FF' & year == 2013,2,number_of_doors)),
-        engine_hp = ifelse(is.na(engine_hp), median(engine_hp,na.rm=TRUE), engine_hp),
-        engine_cylinders = as.factor(ifelse(is.na(engine_cylinders)|engine_cylinders == 0,0,engine_cylinders)),
-        highway_mpg = ifelse(highway_mpg == 354, 34, highway_mpg)) %>% 
-    filter(!is.na(engine_fuel_type))
+miss_var_summary(cars)
+```
+Replaced number_of_doors with actual value
+```{r}
+cars <- cars %>% mutate(number_of_doors = ifelse(make == 'Tesla' & model == 'Model S' & year == 2016,4, ifelse(make == 'Ferrari' & model == 'FF' & year == 2013,2,number_of_doors)))
+```
+Replaced missing value of engine_cylinders to 0 for electric cars, removed 20 missing values for rotary engine
+```{r}
+cars <- cars %>% mutate(engine_cylinders = ifelse(engine_fuel_type == 'electric', 0, engine_cylinders)) %>% 
+                filter(!is.na(engine_cylinders))
+```
+Replaced missing value of Suzuki Verona (engine_cylinders, engine_fuel)
+```{r}
+cars <- cars %>% mutate(engine_cylinders = ifelse(model == 'Verona', 6, engine_cylinders), engine_fuel_type = ifelse(model  == 'Verona', 'regular unleaded', engine_fuel_type))
+```
+Replace engine_hp with value, remove the last 3 obs
+```{r}
+cars <- cars %>% mutate(engine_hp = ifelse(model == '500e', 111, engine_hp))
+cars <- cars %>% mutate(engine_hp = ifelse(model == 'Continental' & make == 'Lincoln', 350, engine_hp))
+cars <- cars %>% mutate(engine_hp = ifelse(model == 'Escape' & make == 'Ford', 206, engine_hp))
+cars <- cars %>% mutate(engine_hp = ifelse(model == 'Fit EV' & make == 'Honda', 120, engine_hp))
+cars <- cars %>% mutate(engine_hp = ifelse(model == 'Focus' & make == 'Ford', 143, engine_hp))
+cars <- cars %>% mutate(engine_hp = ifelse(model == 'Freestar' & make == 'Ford', 195, engine_hp))
+cars <- cars %>% mutate(engine_hp = ifelse(model == 'Impala' & make == 'Chevrolet', 196, engine_hp))
+cars <- cars %>% mutate(engine_hp = ifelse(model == 'Leaf' & make == 'Nissan', 107, engine_hp))
+cars <- cars %>% mutate(engine_hp = ifelse(model == 'MKZ' & make == 'Lincoln', 188, engine_hp))
+cars <- cars %>% mutate(engine_hp = ifelse(model == 'Model S' & make == 'Tesla', 400, engine_hp))
+cars <- cars %>% mutate(engine_hp = ifelse(model == 'RAV4 EV' & make == 'Toyota', 154, engine_hp))
+cars <- cars %>% mutate(engine_hp = ifelse(model == 'Soul EV' & make == 'Kia', 109, engine_hp))
+cars <- cars %>% filter(!is.na(engine_hp))
 ```
 Confirm that there are zero NA values
 ```{r}
-sum(as.numeric(is.na.data.frame(msrpDF)))
+sum(as.numeric(is.na.data.frame(cars)))
 ```
-Study the data
+Filtered observations where msrp is between 2001-150000, year after 2000, replace highway_mpg with real value
 ```{r}
-dim(msrpDF) # 16 variables, 11914 observations
-str(msrpDF) # or spec(msrpDF) for condensed recap
-summary(msrpDF)
+cars <- cars %>% filter(msrp != 2000 & msrp < 150000 & year >= 2001) %>% mutate(highway_mpg = ifelse(highway_mpg == 354, 34, highway_mpg))
+# filter further cars <- cars %>% filter(!(year<=2010 & msrp>= 100000))
+```
+set relevant variables as factors
+```{r}
+factor_vars <- c("make", "model", "engine_fuel_type", "engine_cylinders", "transmission_type", "driven_wheels", "number_of_doors", "market_category", "vehicle_size", "vehicle_style")
+cars[factor_vars] <- lapply(cars[factor_vars], factor)
 ```
 
-### EDA
+## EDA
+
+- no errors on engine_hp, but might consider transforming during models    
+- Popularity is a weird variable. Score is set by brand rather than model. And Ford has the highest pop score by far, but certainly not the highest msrp, so I suspect this var won't be used for predicting msrp.  
+
+Study the data: 16 variables, 9824 observations
 ```{r}
-msrpDF %>% ggplot(aes(x=year, y=msrp)) + geom_point()
-# cars before 2001.
-dim(msrpDF %>% select(msrp, year) %>% filter(year < 2001))
-summary(msrpDF %>% select(msrp, year) %>% filter(year < 2001))
-# msrp < 500000. 11 obs
-dim(msrpDF %>% select(make, model, year, msrp) %>% filter(msrp > 500000))
-summary(msrpDF %>% select(make, model, year, msrp) %>% filter(msrp > 500000))
+str(cars)
+summary(cars)
 ```
-final df
+Distribution of msrp. possible log transformation prior to analysis
 ```{r}
-final <- msrpDF %>% filter(year < 2001 & msrp < 10000)
-summary(final)
+cars %>% ggplot(aes(x=msrp)) + geom_histogram(bins=20)
+```
+
+Distribution of categories
+```{r}
+cars %>% select(msrp, market_category) %>%
+  ggplot(aes(x = msrp, fill=market_category))+
+  geom_histogram()+theme(legend.position='none')
+
+# boxplot of msrp vs market_category
+cars %>% ggplot(aes(x=market_category, y=msrp)) + geom_boxplot()
 
 ```
 
-### ANALYSIS
+```{r}
+mc_levels <- cars %>% select(msrp, market_category) %>%
+  group_by(market_category) %>% summarize(mean(msrp)) %>% arrange(desc(`mean(msrp)`))
+
+
+cars$market_category <- factor(cars$market_category, ordered = TRUE, levels = mc_levels$market_category)
+
+
+summary(cars$market_category)
+```
+
+### setting ordered levels for engine_cylinders
+```{r}
+ec_levels <- cars %>% select(msrp, engine_cylinders) %>%
+  group_by(engine_cylinders) %>% summarize(mean(msrp)) %>% arrange(desc(`mean(msrp)`))
+
+cars$engine_cylinders <- factor(cars$engine_cylinders, ordered=TRUE, levels=ec_levels$engine_cylinders)
+```
+
+ordering transmisssion_type
+```{r}
+cars %>% ggplot(aes(y = msrp, fill = transmission_type))+geom_boxplot()
+
+
+tt_levels <- cars %>% select(msrp, transmission_type) %>%
+  group_by(transmission_type) %>% summarize(mean(msrp)) %>% arrange(desc(`mean(msrp)`))
+
+cars$transmission_type <- factor(cars$transmission_type, ordered=TRUE, levels=tt_levels$transmission_type)
+```
+
+ordering vehicle_style
+```{r}
+cars %>% ggplot(aes(y = msrp, fill = vehicle_style))+geom_boxplot()
+
+vs_levels <- cars %>% select(msrp, vehicle_style) %>%
+  group_by(vehicle_style) %>% summarize(median(msrp)) %>% arrange(desc(`median(msrp)`))
+
+cars$vehicle_style <- factor(cars$vehicle_style, ordered=TRUE, levels=vs_levels$vehicle_style)
+```
+
+exploring correlation patterns
+starting with numeric
+```{r}
+i1 <- sapply(cars, is.numeric)
+y1 <- 'msrp'
+x1 <- setdiff(names(cars)[i1], y1)
+cor(cars[x1], cars[[y1]])
+```
+
+we see engine_hp with highest corr (.797) and popularity with lowess (0.0222)
+
+visual representation of correlation matrix
+```{r}
+num_corr <- cor(cars[x1], cars[[y1]])
+cnames <- c('year', 'engine_hp', 'highway_mpg', 'city_mpg', 'popularity')
+num_corr <- cbind(num_corr, cnames) %>% as.data.frame()
+num_corr %>% ggplot(aes(x = cnames, y = pearson, color = cnames))+geom_point()+theme_classic()+ggtitle("MSRP correlation with numeric variables")+labs(x = "Numeric Variables", y = 'Correlation')+theme(legend.position='none')
+```
+
+## Objective 1 Analysis
 ```{r}
 set.seed(7)
 ```
+--
 
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-```
-
-## R Markdown
-
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
-
-```{r cars}
-summary(cars)
-```
-
-## Including Plots
-
-You can also embed plots, for example:
-
-```{r pressure, echo=FALSE}
-plot(pressure)
-```
-
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+## Objective 2 Analysis
 
