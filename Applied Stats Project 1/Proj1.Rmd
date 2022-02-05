@@ -1,0 +1,99 @@
+---
+title: "DS 6372 Project 1"
+output: html_document
+---
+
+Load the necessary packages
+```{r}
+library(tidyverse)
+library(janitor)
+library(leaps)
+library(olsrr)
+library(caret)
+library(class)
+```
+
+Read in the data, clean variable names
+```{r}
+msrpDF <- clean_names(read_csv('https://raw.githubusercontent.com/hmlam1/MSDS-Projects/main/Applied%20Stats%20Project%201/Vehicle_MSRP.csv', show_col_types=F))
+```
+
+Check for missing values for each variable
+```{r}
+colSums(is.na(msrpDF))
+# cbind(lapply(lapply(cars, is.na), sum))
+#engine fuel type: 3
+#engine HP: 69
+#engine cylinders: 30 
+#Number of doors: 6
+
+unique(msrpDF$engine_fuel_type) # remove at the end
+unique(msrpDF$engine_hp) # continuous so use median for model or year for NA?
+unique(msrpDF$engine_cylinders) # set as categorical, merge 0 and NA together?
+unique(msrpDF$number_of_doors) # google car and input value
+
+# clean data
+msrpDF <- msrpDF %>% mutate(number_of_doors = ifelse(make == 'Tesla' & model == 'Model S' & year == 2016,4,
+        ifelse(make == 'Ferrari' & model == 'FF' & year == 2013,2,number_of_doors)),
+        engine_hp = ifelse(is.na(engine_hp), median(engine_hp,na.rm=TRUE), engine_hp),
+        engine_cylinders = as.factor(ifelse(is.na(engine_cylinders)|engine_cylinders == 0,0,engine_cylinders)),
+        highway_mpg = ifelse(highway_mpg == 354, 34, highway_mpg)) %>% 
+    filter(!is.na(engine_fuel_type))
+```
+Confirm that there are zero NA values
+```{r}
+sum(as.numeric(is.na.data.frame(msrpDF)))
+```
+Study the data
+```{r}
+dim(msrpDF) # 16 variables, 11914 observations
+str(msrpDF) # or spec(msrpDF) for condensed recap
+summary(msrpDF)
+```
+
+### EDA
+```{r}
+msrpDF %>% ggplot(aes(x=year, y=msrp)) + geom_point()
+# cars before 2001.
+dim(msrpDF %>% select(msrp, year) %>% filter(year < 2001))
+summary(msrpDF %>% select(msrp, year) %>% filter(year < 2001))
+# msrp < 500000. 11 obs
+dim(msrpDF %>% select(make, model, year, msrp) %>% filter(msrp > 500000))
+summary(msrpDF %>% select(make, model, year, msrp) %>% filter(msrp > 500000))
+```
+final df
+```{r}
+final <- msrpDF %>% filter(year < 2001 & msrp < 10000)
+summary(final)
+
+```
+
+### ANALYSIS
+```{r}
+set.seed(7)
+```
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+
