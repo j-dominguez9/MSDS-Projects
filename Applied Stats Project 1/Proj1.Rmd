@@ -129,9 +129,7 @@ hetcor(cars$msrp, cars$engine_fuel_type, cars$model, cars$make, cars$engine_cyli
 
 ### it appears market_category has the highest correlation with msrp (0.7203), followed by engine_cylinders with 0.6. Of insignificant correlation are model (.012), driven wheels(0.055) and number of doors(.1179)
 ```
-msrp vs. make, vehicle_style, & market_category
-
-(did not plot msrp vs. model bc unreadable at 65 levels)
+msrp vs. make, vehicle_style, and market_category (did not plot msrp vs. model bc unreadable at 65 levels)
 ```{r}
 # msrp vs. make
 p7 <- cars %>% ggplot(aes(x=make, y=msrp)) + geom_boxplot()
