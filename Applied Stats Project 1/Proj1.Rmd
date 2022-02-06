@@ -105,7 +105,9 @@ cars %>% ggplot(aes(x=popularity, y=msrp)) + geom_point()
 ```
 msrp vs. highway_mpg. Require transformation
 ```{r}
-cars %>% ggplot(aes(x=highway_mpg, y=msrp)) + geom_point()
+cars %>% ggplot(aes(x=highway_mpg, y=msrp)) + geom_point() + geom_smooth(method='lm')
+cars %>% ggplot(aes(x=highway_mpg, y=msrp)) + geom_point() + geom_smooth(method='loess')
+# remove obs above 60 mpg?
 ```
 msrp vs. city_mpg. Require transformation
 ```{r}
