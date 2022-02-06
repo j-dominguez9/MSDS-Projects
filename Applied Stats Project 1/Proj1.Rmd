@@ -10,6 +10,8 @@ Load the necessary packages
 library(tidyverse)
 library(janitor)
 library(naniar)
+library(polycor)
+library(cowplot)
 library(leaps)
 library(olsrr)
 library(caret)
@@ -92,34 +94,28 @@ num_corr <- cbind(num_corr, cnames) %>% as.data.frame()
 num_corr %>% ggplot(aes(x = cnames, y = V1, color = cnames))+geom_point()+theme_classic()+ggtitle("MSRP correlation with numeric variables")+labs(x = "Numeric Variables", y = 'Correlation')+theme(legend.position='none')
 ```
 
-msrp. numerical. log transform
 ```{r}
-cars %>% ggplot(aes(x=msrp)) + geom_histogram(bins=20)
-```
-msrp vs. popularity. 
+# msrp. log transform
+p1 <- cars %>% ggplot(aes(x=msrp)) + geom_histogram(bins=20)
 
-Popularity is a weird variable. Score is set by brand rather than model. And Ford has the highest pop score by far, but certainly not the highest msrp, so I suspect this var won't be used for predicting msrp.
-```{r}
-cars %>% ggplot(aes(x=popularity, y=msrp)) + geom_point()
-# could be categorical, set as factor bc each car's make shares the same value.
-```
-msrp vs. highway_mpg. Require transformation
-```{r}
-cars %>% ggplot(aes(x=highway_mpg, y=msrp)) + geom_point() + geom_smooth(method='lm')
-cars %>% ggplot(aes(x=highway_mpg, y=msrp)) + geom_point() + geom_smooth(method='loess')
-# remove obs above 60 mpg?
-```
-msrp vs. city_mpg. Require transformation
-```{r}
-cars %>% ggplot(aes(x=city_mpg, y=msrp)) + geom_point()
-```
-msrp vs. year. 
-```{r}
-cars %>% ggplot(aes(x=year, y=msrp)) + geom_point()
-```
-msrp vs. engine_hp. Requires transformation
-```{r}
-cars %>% ggplot(aes(x=engine_hp, y=msrp)) + geom_point()
+# msrp vs. year. 
+p2 <- cars %>% ggplot(aes(x=year, y=msrp)) + geom_point()
+
+# msrp vs. popularity
+## Popularity is a weird variable. Score is set by brand rather than model. And Ford has the highest pop score by far, but certainly not the highest msrp, so I suspect this var won't be used for predicting msrp. can be set to categorical if necessary
+p3 <- cars %>% ggplot(aes(x=popularity, y=msrp)) + geom_point()
+
+# msrp vs. highway_mpg. Require transformation
+p4 <- cars %>% ggplot(aes(x=highway_mpg, y=msrp)) + geom_point() + geom_smooth(method='lm')
+
+# msrp vs. city_mpg. Require transformation
+p5 <- cars %>% ggplot(aes(x=city_mpg, y=msrp)) + geom_point() + geom_smooth(method='lm')
+
+# msrp vs. engine_hp. Requires transformation
+p6 <- cars %>% ggplot(aes(x=engine_hp, y=msrp)) + geom_point() + geom_smooth(method='lm')
+
+# PLOT
+plot_grid(p1, p2, p3, p4, p5, p6)
 ```
 
 ## Categorical variables
