@@ -3,7 +3,7 @@ title: "DS 6372 Project 1"
 output: html_document
 ---
 
-## Data Prep
+# Data Prep
 
 Load the necessary packages
 ```{r}
@@ -12,8 +12,6 @@ library(janitor)
 library(naniar)
 library(leaps)
 library(olsrr)
-library(caret)
-library(class)
 ```
 
 Read in the data, clean variable names
@@ -31,8 +29,7 @@ cars <- cars %>% mutate(number_of_doors = ifelse(make == 'Tesla' & model == 'Mod
 ```
 Replaced missing value of engine_cylinders to 0 for electric cars, removed 20 missing values for rotary engine
 ```{r}
-cars <- cars %>% mutate(engine_cylinders = ifelse(engine_fuel_type == 'electric', 0, engine_cylinders)) %>% 
-                filter(!is.na(engine_cylinders))
+cars <- cars %>% mutate(engine_cylinders = ifelse(engine_fuel_type == 'electric', 0, engine_cylinders)) %>% filter(!is.na(engine_cylinders))
 ```
 Replaced missing value of Suzuki Verona (engine_cylinders, engine_fuel)
 ```{r}
@@ -63,13 +60,13 @@ Filtered observations where msrp is between 2001-150000, year after 2000, replac
 cars <- cars %>% filter(msrp != 2000 & msrp < 150000 & year >= 2001) %>% mutate(highway_mpg = ifelse(highway_mpg == 354, 34, highway_mpg))
 # filter further cars <- cars %>% filter(!(year<=2010 & msrp>= 100000))
 ```
-set relevant variables as factors. Popularity as factor bc each make shares the same popularity score so it's not really continuous
+set relevant variables as factors
 ```{r}
 factor_vars <- c("make", "model", "engine_fuel_type", "engine_cylinders", "transmission_type", "driven_wheels", "number_of_doors", "market_category", "vehicle_size", "vehicle_style")
 cars[factor_vars] <- lapply(cars[factor_vars], factor)
 ```
 
-## EDA
+# EDA
 
 - no errors on engine_hp, but might consider transforming during models    
 - Popularity is a weird variable. Score is set by brand rather than model. And Ford has the highest pop score by far, but certainly not the highest msrp, so I suspect this var won't be used for predicting msrp.  
@@ -79,12 +76,54 @@ Study the data: 16 variables, 9824 observations
 str(cars)
 summary(cars)
 ```
-Distribution of msrp. possible log transformation prior to analysis
+
+## Numerical variables
+
+6 total. All except popularity (and maybe year) need to be transformed in some way. Popularity could be categorical and set as factor bc each car's make shares the same value
+
+Correlation pattern. Engine_hp with highest corr (.797) and popularity with lowest (0.0222)
+```{r}
+i1 <- sapply(cars, is.numeric)
+y1 <- 'msrp'
+x1 <- setdiff(names(cars)[i1], y1)
+cor(cars[x1], cars[[y1]])
+```
+visual representation of correlation matrix
+```{r}
+num_corr <- cor(cars[x1], cars[[y1]])
+cnames <- c('year', 'engine_hp', 'highway_mpg', 'city_mpg', 'popularity')
+num_corr <- cbind(num_corr, cnames) %>% as.data.frame()
+num_corr %>% ggplot(aes(x = cnames, y = pearson, color = cnames))+geom_point()+theme_classic()+ggtitle("MSRP correlation with numeric variables")+labs(x = "Numeric Variables", y = 'Correlation')+theme(legend.position='none')
+```
+
+msrp. numerical. log transform
 ```{r}
 cars %>% ggplot(aes(x=msrp)) + geom_histogram(bins=20)
 ```
+msrp vs. popularity
+```{r}
+cars %>% ggplot(aes(x=popularity, y=msrp)) + geom_point()
+```
+msrp vs. highway_mpg. Require transformation
+```{r}
+cars %>% ggplot(aes(x=highway_mpg, y=msrp)) + geom_point()
+```
+msrp vs. city_mpg. Require transformation
+```{r}
+cars %>% ggplot(aes(x=city_mpg, y=msrp)) + geom_point()
+```
+msrp vs year. 
+```{r}
+cars %>% ggplot(aes(x=year, y=msrp)) + geom_point()
+```
+msrp vs. engine_hp. Requires transformation
+```{r}
+cars %>% ggplot(aes(x=engine_hp, y=msrp)) + geom_point()
+```
 
-Distribution of categories
+## Categorical variables
+
+msrp vs market_category
 ```{r}
 cars %>% select(msrp, market_category) %>%
   ggplot(aes(x = msrp, fill=market_category))+
@@ -135,56 +174,16 @@ vs_levels <- cars %>% select(msrp, vehicle_style) %>%
 cars$vehicle_style <- factor(cars$vehicle_style, ordered=TRUE, levels=vs_levels$vehicle_style)
 ```
 
-exploring correlation patterns
-starting with numeric
-```{r}
-i1 <- sapply(cars, is.numeric)
-y1 <- 'msrp'
-x1 <- setdiff(names(cars)[i1], y1)
-cor(cars[x1], cars[[y1]])
-```
 
-we see engine_hp with highest corr (.797) and popularity with lowess (0.0222)
 
-visual representation of correlation matrix
-```{r}
-num_corr <- cor(cars[x1], cars[[y1]])
-cnames <- c('year', 'engine_hp', 'highway_mpg', 'city_mpg', 'popularity')
-num_corr <- cbind(num_corr, cnames) %>% as.data.frame()
-num_corr %>% ggplot(aes(x = cnames, y = pearson, color = cnames))+geom_point()+theme_classic()+ggtitle("MSRP correlation with numeric variables")+labs(x = "Numeric Variables", y = 'Correlation')+theme(legend.position='none')
-```
-Numerical variables
-
-msrp. numerical. log transform
-```{r}
-cars %>% ggplot(aes(x=msrp)) + geom_histogram()
-```
-msrp vs. popularity
-```{r}
-cars %>% ggplot(aes(x=popularity, y=msrp)) + geom_point()
-```
-msrp vs. highway_mpg. 
-```{r}
-cars %>% ggplot(aes(x=city_mpg, y=msrp)) + geom_point()
-```
-msrp vs. city_mpg
-```{r}
-cars %>% ggplot(aes(x=highway_mpg, y=msrp)) + geom_point()
-```
-msrp vs year
-```{r}
-cars %>% ggplot(aes(x=year, y=msrp)) + geom_point()
-```
-msrp vs. engine_hp
-```{r}
-cars %>% ggplot(aes(x=engine_hp, y=msrp)) + geom_point()
-```
-
-## Objective 1 Analysis
+# Objective 1 Analysis
 ```{r}
 set.seed(7)
 ```
 --
 
-## Objective 2 Analysis
+# Objective 2 Analysis
+```{r}
+
+```
 
