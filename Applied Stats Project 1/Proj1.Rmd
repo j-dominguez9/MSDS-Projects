@@ -139,17 +139,15 @@ vs_levels <- cars %>% select(msrp, vehicle_style) %>%
   group_by(vehicle_style) %>% summarize(median(msrp)) %>% arrange(desc(`median(msrp)`))
 
 cars$vehicle_style <- factor(cars$vehicle_style, ordered=TRUE, levels=vs_levels$vehicle_style)
-
+# boxplot
 p8 <- cars %>% ggplot(aes(y = msrp, fill = vehicle_style))+geom_boxplot()
 
 # msrp vs market_category
-
 cars %>% select(msrp, market_category) %>%
   ggplot(aes(x = msrp, fill=market_category))+
   geom_histogram()+theme(legend.position='none')
-
 # boxplot
-cars %>% ggplot(aes(x=market_category, y=msrp)) + geom_boxplot()
+p9 <- cars %>% ggplot(aes(x=market_category, y=msrp)) + geom_boxplot()
 
 # PLOT ALL
 plot_grid(p7, p8, p9, nrow = 3)
