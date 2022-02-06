@@ -179,9 +179,7 @@ p11 <- cars %>% ggplot(aes(x=engine_fuel_type, y=msrp)) + geom_boxplot()
 ## msrp vs. driven_wheels
 p12 <- cars %>% ggplot(aes(x=driven_wheels, y=msrp)) + geom_boxplot()
 
-
 # msrp vs. transmission_type
-
 tt_levels <- cars %>% select(msrp, transmission_type) %>%
   group_by(transmission_type) %>% summarize(mean(msrp)) %>% arrange((`mean(msrp)`))
 
