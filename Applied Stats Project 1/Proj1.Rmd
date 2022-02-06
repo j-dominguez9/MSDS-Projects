@@ -124,6 +124,8 @@ Correlation of categorical variables
 ```{r warning=FALSE}
 # caution: code takes a hot min to run
 hetcor(cars$msrp, cars$engine_fuel_type, cars$model, cars$make, cars$engine_cylinders, cars$transmission_type, cars$driven_wheels, cars$number_of_doors, cars$market_category, cars$vehicle_size, cars$vehicle_style)
+
+### it appears market_category has the highest correlation with msrp (0.7203), followed by engine_cylinders with 0.6. Of insignificant correlation are model (.012), driven wheels(0.055) and number of doors(.1179)
 ```
 msrp vs. make. did not plot model bc unreadable
 ```{r}
