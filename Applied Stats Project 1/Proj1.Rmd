@@ -203,13 +203,23 @@ p15 <- cars %>% ggplot(aes(x=number_of_doors, y=msrp)) + geom_boxplot()
 plot_grid(p10, p11, p12, p13, p14, p15)
 ```
 
-# Objective 1 Analysis
+# Simple Model
 ```{r}
 set.seed(7)
-```
---
+library(splitTools) # data partition
 
-# Objective 2 Analysis
+index <- partition(cars$msrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
+train <- cars[index$train, ]
+valid <- cars[index$valid, ]
+test <- cars[index$test, ]
+```
+
+# Complex Model
+```{r}
+
+```
+
+# Parametric Model
 ```{r}
 
 ```
