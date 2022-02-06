@@ -12,6 +12,7 @@ library(janitor)
 library(naniar)
 library(leaps)
 library(olsrr)
+library(caret)
 ```
 
 Read in the data, clean variable names
@@ -122,6 +123,11 @@ cars %>% ggplot(aes(x=engine_hp, y=msrp)) + geom_point()
 ```
 
 ## Categorical variables
+
+correlation of categorical variables 
+```{r}
+hetcor(cars$msrp, cars$engine_fuel_type, cars$model, cars$make, cars$engine_cylinders, cars$transmission_type, cars$driven_wheels, cars$number_of_doors, cars$market_category, cars$vehicle_size, cars$vehicle_style)
+```
 
 msrp vs market_category
 ```{r}
