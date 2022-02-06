@@ -16,25 +16,27 @@ library(leaps)
 library(olsrr)
 library(caret)
 ```
-
 Read in the data, clean variable names
 ```{r}
 cars <- clean_names(read_csv('https://raw.githubusercontent.com/hmlam1/MSDS-Projects/main/Applied%20Stats%20Project%201/Vehicle_MSRP.csv', show_col_types=F))
 ```
-
+Raw data prior to cleaning: 16 variables, 11914 observations
+```{r}
+dim(cars)
+```
 Check for missing values for each variable: engine_hp (69), engine_cylinders (30), number_of_doors (6), engine_fuel_type (3)
 ```{r}
 miss_var_summary(cars)
 ```
-Replaced number_of_doors with actual value
+Replace number_of_doors with actual value, replace highway_mpg with real value
 ```{r}
-cars <- cars %>% mutate(number_of_doors = ifelse(make == 'Tesla' & model == 'Model S' & year == 2016,4, ifelse(make == 'Ferrari' & model == 'FF' & year == 2013,2,number_of_doors)))
+cars <- cars %>% mutate(number_of_doors = ifelse(make == 'Tesla' & model == 'Model S' & year == 2016,4, ifelse(make == 'Ferrari' & model == 'FF' & year == 2013,2,number_of_doors)), highway_mpg = ifelse(highway_mpg == 354, 34, highway_mpg))
 ```
-Replaced missing value of engine_cylinders to 0 for electric cars, removed 20 missing values for rotary engine
+Replace missing value of engine_cylinders to 0 for electric cars, remove 20 missing values for rotary engine
 ```{r}
 cars <- cars %>% mutate(engine_cylinders = ifelse(engine_fuel_type == 'electric', 0, engine_cylinders)) %>% filter(!is.na(engine_cylinders))
 ```
-Replaced missing value of Suzuki Verona (engine_cylinders, engine_fuel)
+Replace missing value of Suzuki Verona (engine_cylinders, engine_fuel)
 ```{r}
 cars <- cars %>% mutate(engine_cylinders = ifelse(model == 'Verona', 6, engine_cylinders), engine_fuel_type = ifelse(model  == 'Verona', 'regular unleaded', engine_fuel_type))
 ```
@@ -58,9 +60,9 @@ Confirm that there are zero NA values
 ```{r}
 sum(as.numeric(is.na.data.frame(cars)))
 ```
-Filtered observations where msrp is between 2001-150000, year after 2000, replace highway_mpg with real value
+Filter observations where msrp is between 2001-150000, year after 2000
 ```{r}
-cars <- cars %>% filter(msrp != 2000 & msrp < 150000 & year >= 2001) %>% mutate(highway_mpg = ifelse(highway_mpg == 354, 34, highway_mpg))
+cars <- cars %>% filter(msrp != 2000 & msrp < 150000 & year >= 2001)
 # filter further cars <- cars %>% filter(!(year<=2010 & msrp>= 100000))
 ```
 set relevant variables as factors
