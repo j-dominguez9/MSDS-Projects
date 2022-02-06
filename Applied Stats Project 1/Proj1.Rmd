@@ -208,14 +208,26 @@ msrp vs. vehicle_style
 vs_levels <- cars %>% select(msrp, vehicle_style) %>%
   group_by(vehicle_style) %>% summarize(median(msrp)) %>% arrange((`median(msrp)`))
 
-## msrp vs. vehicle_size
-p13 <- cars %>% ggplot(aes(x=vehicle_size, y=msrp)) + geom_boxplot()
+cars$vehicle_style <- factor(cars$vehicle_style, ordered=TRUE, levels=vs_levels$vehicle_style)
+
 
 ## msrp vs. number_of_doors
 p14 <- cars %>% ggplot(aes(x=number_of_doors, y=msrp)) + geom_boxplot()
 
 ## PLOT
 plot_grid(p9, p10, p11, p12, p13, p14)
+```
+
+
+```{r}
+## msrp vs. vehicle_size
+p13 <- cars %>% ggplot(aes(x=vehicle_size, y=msrp)) + geom_boxplot()
+
+# ordering vehicle_size
+vsi_levels <- cars %>% select(msrp, vehicle_size) %>%
+  group_by(vehicle_size) %>% summarize(median(msrp)) %>% arrange((`median(msrp)`))
+
+cars$vehicle_size <- factor(cars$vehicle_size, ordered=TRUE, levels=vsi_levels$vehicle_size)
 ```
 
 # Objective 1 Analysis
