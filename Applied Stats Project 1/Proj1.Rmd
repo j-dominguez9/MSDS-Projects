@@ -15,6 +15,7 @@ library(cowplot)
 library(leaps)
 library(olsrr)
 library(caret)
+library(polycor)
 ```
 
 Read in the data, clean variable names
@@ -124,6 +125,8 @@ Correlation of categorical variables
 ```{r warning=FALSE}
 # caution: code takes a hot min to run
 hetcor(cars$msrp, cars$engine_fuel_type, cars$model, cars$make, cars$engine_cylinders, cars$transmission_type, cars$driven_wheels, cars$number_of_doors, cars$market_category, cars$vehicle_size, cars$vehicle_style)
+
+### it appears market_category has the highest correlation with msrp (0.7203), followed by engine_cylinders with 0.6. Of insignificant correlation are model (.012), driven wheels(0.055) and number of doors(.1179)
 ```
 msrp vs. make & msrp vs. vehicle_style (did not plot msrp vs. model bc unreadable at 65 levels)
 ```{r}
@@ -154,7 +157,7 @@ cars %>% ggplot(aes(x=market_category, y=msrp)) + geom_boxplot()
 
 ```{r}
 mc_levels <- cars %>% select(msrp, market_category) %>%
-  group_by(market_category) %>% summarize(mean(msrp)) %>% arrange(desc(`mean(msrp)`))
+  group_by(market_category) %>% summarize(mean(msrp)) %>% arrange((`mean(msrp)`))
 
 cars$market_category <- factor(cars$market_category, ordered = TRUE, levels = mc_levels$market_category)
 
@@ -166,10 +169,11 @@ Plotting rest of the categorical variables together
 ## msrp vs. engine_cylinders
 # ordered levels
 ec_levels <- cars %>% select(msrp, engine_cylinders) %>%
-  group_by(engine_cylinders) %>% summarize(mean(msrp)) %>% arrange(desc(`mean(msrp)`))
+  group_by(engine_cylinders) %>% summarize(mean(msrp)) %>% arrange((`mean(msrp)`))
 
 cars$engine_cylinders <- factor(cars$engine_cylinders, ordered=TRUE, levels=ec_levels$engine_cylinders)
 
+<<<<<<< HEAD
 p9 <- cars %>% ggplot(aes(x=engine_cylinders, y=msrp)) + geom_boxplot()
 
 ## msrp vs. engine_fuel_type
@@ -179,12 +183,35 @@ p10 <- cars %>% ggplot(aes(x=engine_fuel_type, y=msrp)) + geom_boxplot()
 p11 <- cars %>% ggplot(aes(x=driven_wheels, y=msrp)) + geom_boxplot()
 
 ## msrp vs. transmisssion_type
+=======
+# boxplot
+cars %>% ggplot(aes(x=engine_cylinders, y=msrp)) + geom_boxplot()
+```
+msrp vs. engine_fuel_type
+```{r}
+cars %>% ggplot(aes(x=engine_fuel_type, y=msrp)) + geom_boxplot()
+```
+msrp vs. transmission_type
+```{r}
+>>>>>>> c31c57247c54a3314f06a54d6c0cffc3a34ca60c
 tt_levels <- cars %>% select(msrp, transmission_type) %>%
-  group_by(transmission_type) %>% summarize(mean(msrp)) %>% arrange(desc(`mean(msrp)`))
+  group_by(transmission_type) %>% summarize(mean(msrp)) %>% arrange((`mean(msrp)`))
 
 cars$transmission_type <- factor(cars$transmission_type, ordered=TRUE, levels=tt_levels$transmission_type)
 
+<<<<<<< HEAD
 p12 <- cars %>% ggplot(aes(y = msrp, fill = transmission_type))+geom_boxplot()
+=======
+```
+msrp vs. driven_wheels
+```{r}
+cars %>% ggplot(aes(x=driven_wheels, y=msrp)) + geom_boxplot()
+```
+msrp vs. vehicle_style
+```{r}
+vs_levels <- cars %>% select(msrp, vehicle_style) %>%
+  group_by(vehicle_style) %>% summarize(median(msrp)) %>% arrange((`median(msrp)`))
+>>>>>>> c31c57247c54a3314f06a54d6c0cffc3a34ca60c
 
 ## msrp vs. vehicle_size
 p13 <- cars %>% ggplot(aes(x=vehicle_size, y=msrp)) + geom_boxplot()
