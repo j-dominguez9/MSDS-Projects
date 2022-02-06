@@ -94,7 +94,7 @@ cnames <- c('year', 'engine_hp', 'highway_mpg', 'city_mpg', 'popularity')
 num_corr <- cbind(num_corr, cnames) %>% as.data.frame()
 num_corr %>% ggplot(aes(x = cnames, y = V1, color = cnames))+geom_point()+theme_classic()+ggtitle("MSRP correlation with numeric variables")+labs(x = "Numeric Variables", y = 'Correlation')+theme(legend.position='none')
 ```
-
+Plot numerical variables
 ```{r}
 # msrp. log transform
 p1 <- cars %>% ggplot(aes(x=msrp)) + geom_histogram(bins=20)
@@ -128,17 +128,30 @@ hetcor(cars$msrp, cars$engine_fuel_type, cars$model, cars$make, cars$engine_cyli
 
 ### it appears market_category has the highest correlation with msrp (0.7203), followed by engine_cylinders with 0.6. Of insignificant correlation are model (.012), driven wheels(0.055) and number of doors(.1179)
 ```
-msrp vs. make. did not plot model bc unreadable
+msrp vs. make & msrp vs. vehicle_style (did not plot msrp vs. model bc unreadable at 65 levels)
 ```{r}
-cars %>% ggplot(aes(x=make, y=msrp)) + geom_boxplot()
+# msrp vs. make
+p7 <- cars %>% ggplot(aes(x=make, y=msrp)) + geom_boxplot()
+
+#msrp vs. vehicle_style
+vs_levels <- cars %>% select(msrp, vehicle_style) %>%
+  group_by(vehicle_style) %>% summarize(median(msrp)) %>% arrange(desc(`median(msrp)`))
+
+cars$vehicle_style <- factor(cars$vehicle_style, ordered=TRUE, levels=vs_levels$vehicle_style)
+
+p8 <- cars %>% ggplot(aes(y = msrp, fill = vehicle_style))+geom_boxplot()
+
+# plot
+plot_grid(p7, p8, nrow = 2)
 ```
+
 msrp vs market_category
 ```{r}
 cars %>% select(msrp, market_category) %>%
   ggplot(aes(x = msrp, fill=market_category))+
   geom_histogram()+theme(legend.position='none')
 
-# boxplot
+# plot
 cars %>% ggplot(aes(x=market_category, y=msrp)) + geom_boxplot()
 ```
 
@@ -150,14 +163,25 @@ cars$market_category <- factor(cars$market_category, ordered = TRUE, levels = mc
 
 summary(cars$market_category)
 ```
-msrp vs. engine_cylinders.
+
+Plotting rest of the categorical variables together
 ```{r}
+## msrp vs. engine_cylinders
 # ordered levels
 ec_levels <- cars %>% select(msrp, engine_cylinders) %>%
   group_by(engine_cylinders) %>% summarize(mean(msrp)) %>% arrange((`mean(msrp)`))
 
 cars$engine_cylinders <- factor(cars$engine_cylinders, ordered=TRUE, levels=ec_levels$engine_cylinders)
 
+p9 <- cars %>% ggplot(aes(x=engine_cylinders, y=msrp)) + geom_boxplot()
+
+## msrp vs. engine_fuel_type
+p10 <- cars %>% ggplot(aes(x=engine_fuel_type, y=msrp)) + geom_boxplot()
+
+## msrp vs. driven_wheels
+p11 <- cars %>% ggplot(aes(x=driven_wheels, y=msrp)) + geom_boxplot()
+
+## msrp vs. transmisssion_type
 # boxplot
 cars %>% ggplot(aes(x=engine_cylinders, y=msrp)) + geom_boxplot()
 ```
@@ -171,8 +195,8 @@ tt_levels <- cars %>% select(msrp, transmission_type) %>%
   group_by(transmission_type) %>% summarize(mean(msrp)) %>% arrange((`mean(msrp)`))
 
 cars$transmission_type <- factor(cars$transmission_type, ordered=TRUE, levels=tt_levels$transmission_type)
-# boxplot
-cars %>% ggplot(aes(y = msrp, fill = transmission_type))+geom_boxplot()
+
+p12 <- cars %>% ggplot(aes(y = msrp, fill = transmission_type))+geom_boxplot()
 
 ```
 msrp vs. driven_wheels
@@ -184,19 +208,15 @@ msrp vs. vehicle_style
 vs_levels <- cars %>% select(msrp, vehicle_style) %>%
   group_by(vehicle_style) %>% summarize(median(msrp)) %>% arrange((`median(msrp)`))
 
-cars$vehicle_style <- factor(cars$vehicle_style, ordered=TRUE, levels=vs_levels$vehicle_style)
-# boxplot
-cars %>% ggplot(aes(y = msrp, fill = vehicle_style))+geom_boxplot()
-```
-msrp vs. vehicle_size
-```{r}
-cars %>% ggplot(aes(x=vehicle_size, y=msrp)) + geom_boxplot()
-```
-msrp vs. number_of_doors
-```{r}
-cars %>% ggplot(aes(x=number_of_doors, y=msrp)) + geom_boxplot()
-```
+## msrp vs. vehicle_size
+p13 <- cars %>% ggplot(aes(x=vehicle_size, y=msrp)) + geom_boxplot()
 
+## msrp vs. number_of_doors
+p14 <- cars %>% ggplot(aes(x=number_of_doors, y=msrp)) + geom_boxplot()
+
+## PLOT
+plot_grid(p9, p10, p11, p12, p13, p14)
+```
 
 # Objective 1 Analysis
 ```{r}
