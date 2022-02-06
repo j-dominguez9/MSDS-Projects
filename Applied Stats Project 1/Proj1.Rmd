@@ -66,21 +66,16 @@ set relevant variables as factors
 factor_vars <- c("make", "model", "engine_fuel_type", "engine_cylinders", "transmission_type", "driven_wheels", "number_of_doors", "market_category", "vehicle_size", "vehicle_style")
 cars[factor_vars] <- lapply(cars[factor_vars], factor)
 ```
-
-# EDA
-
-- no errors on engine_hp, but might consider transforming during models    
-- Popularity is a weird variable. Score is set by brand rather than model. And Ford has the highest pop score by far, but certainly not the highest msrp, so I suspect this var won't be used for predicting msrp.  
-
 Study the data: 16 variables, 9824 observations
 ```{r}
 str(cars)
 summary(cars)
 ```
+# EDA
 
 ## Numerical variables
 
-6 total. All except popularity (and maybe year) need to be transformed in some way. Popularity could be categorical and set as factor bc each car's make shares the same value
+6 total. All except popularity (and maybe year) need to be transformed in some way.
 
 Correlation pattern. Engine_hp with highest corr (.797) and popularity with lowest (0.0222)
 ```{r}
@@ -102,8 +97,11 @@ msrp. numerical. log transform
 cars %>% ggplot(aes(x=msrp)) + geom_histogram(bins=20)
 ```
 msrp vs. popularity. 
+
+Popularity is a weird variable. Score is set by brand rather than model. And Ford has the highest pop score by far, but certainly not the highest msrp, so I suspect this var won't be used for predicting msrp.
 ```{r}
 cars %>% ggplot(aes(x=popularity, y=msrp)) + geom_point()
+# could be categorical, set as factor bc each car's make shares the same value.
 ```
 msrp vs. highway_mpg. Require transformation
 ```{r}
