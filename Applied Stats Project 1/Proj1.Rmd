@@ -215,7 +215,7 @@ train <- cars[index$train, ]
 valid <- cars[index$valid, ]
 test <- cars[index$test, ]
 ```
-log msrp; correlation with numerical variables
+log msrp; correlation with *numerical* variables
 ```{r}
 cars <- cars %>% mutate(logmsrp = log(msrp))
 ggpairs(logcars, columns = c('logmsrp', 'year', 'popularity', 'engine_hp', 'highway_mpg', 'city_mpg'))
@@ -223,7 +223,7 @@ ggpairs(logcars, columns = c('logmsrp', 'year', 'popularity', 'engine_hp', 'high
 # include all num var in model. all corr > .2
 # highway, city mpg have slightly higher corr with logmsrp when logged; keep unlogged bc negligible
 ```
-log msrp with categorical variables
+log msrp with *categorical* variables
 ```{r warning=FALSE}
 hetcor(cars$logmsrp, cars$engine_fuel_type, cars$engine_cylinders, cars$market_category, cars$vehicle_size, cars$make, cars$model, cars$transmission_type, cars$driven_wheels, cars$number_of_doors, cars$vehicle_style)
 # caution: takes a few mins to run. here is output to save you time in desc order
@@ -238,7 +238,7 @@ hetcor(cars$logmsrp, cars$engine_fuel_type, cars$engine_cylinders, cars$market_c
 # vehicle_style : .04083
 # model : -.01161
 ```
-Fit the model
+Narrow down the predictors
 ```{r}
 fit.simple <- lm(logmsrp~year+popularity+engine_hp+highway_mpg+city_mpg+engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, data=cars)
 ols_regress(fit.simple) # view model summary, parameter estimates
@@ -248,16 +248,7 @@ ols_vif_tol(fit.simple) # to view VIF. nothing too concerning except electric (e
 # the full model with all predictors and unlogged msrp : adj.r2=.968 rmse=3656 mae=2407
 # full model with all predictors and logmsrp : adjr2 .966 rmse=.083 mae=.062
 ```
-Assumptions check
-```{r}
-ols_plot_diagnostics(fit.simple, print_plot = FALSE) # view residual plots
-# residual vs predicted plot looks good, couple obs veer away at upper margin
-# residual histogram looks great
-# residual qqplot: veers off a bit at the higher end
-# cook's d looks great; no large influential obs
-# outlier & leverage plot: few obs with outliers, leverage; not unexpected with 10k obs
-```
-lasso
+Lasso
 ```{r}
 x=model.matrix(logmsrp~.-msrp,train)[,-2]
 y=log(train$logmsrp)
@@ -271,8 +262,10 @@ bestlambda<-cv.out$lambda.min  #Optimal penalty parameter.  You can make this ca
 lasso.pred=predict (lasso.mod ,s=bestlambda ,newx=xtest)
 testMSE_LASSO<-mean((ytest-lasso.pred)^2)
 testMSE_LASSO
+coef(lasso.mod,s=bestlambda)
+
 ```
-forward selection
+Forward selection
 ```{r}
 selection.fwd <- regsubsets(logmsrp~.-msrp, data=cars, method="forward", nvmax=10)
 coef(selection.fwd,10)
@@ -280,7 +273,19 @@ summary(selection.fwd)$adjr2
 summary(selection.fwd)$bic
 summary(selection.fwd)$rss
 ```
+Fit the model
+```{r}
 
+```
+Assumptions check
+```{r}
+ols_plot_diagnostics(fit.simple, print_plot = FALSE) # view residual plots
+# residual vs predicted plot looks good, couple obs veer away at upper margin
+# residual histogram looks great
+# residual qqplot: veers off a bit at the higher end
+# cook's d looks great; no large influential obs
+# outlier & leverage plot: few obs with outliers, leverage; not unexpected with 10k obs
+```
 # Complex Model
 ```{r}
 
