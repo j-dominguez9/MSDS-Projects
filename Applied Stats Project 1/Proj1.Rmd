@@ -79,8 +79,6 @@ summary(cars)
 
 ## Numerical variables
 
-6 total. All except popularity (and maybe year) need to be transformed in some way.
-
 Correlation pattern. Engine_hp with highest corr (.797) and popularity with lowest (0.0222)
 ```{r}
 i1 <- sapply(cars, is.numeric)
@@ -99,6 +97,7 @@ Plot numerical variables
 ```{r}
 # msrp. log transform
 p1 <- cars %>% ggplot(aes(x=msrp)) + geom_histogram(bins=20)
+# logged: cars %>% ggplot(aes(x=log(msrp))) + geom_histogram(bins=20)
 
 # msrp vs. year. 
 p2 <- cars %>% ggplot(aes(x=year, y=msrp)) + geom_point()
@@ -204,6 +203,8 @@ plot_grid(p10, p11, p12, p13, p14, p15)
 ```
 
 # Simple Model
+
+Split data
 ```{r}
 set.seed(7)
 library(splitTools) # data partition
@@ -212,6 +213,34 @@ index <- partition(cars$msrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
 train <- cars[index$train, ]
 valid <- cars[index$valid, ]
 test <- cars[index$test, ]
+```
+logmsrp correlation with numerical variables
+```{r}
+library(GGally)
+library(ggpairs)
+logcars <- cars %>% mutate(logmsrp = log(msrp), logengine_hp = log(engine_hp), loghighway_mpg = log(highway_mpg), logcity_mpg = log(city_mpg))
+
+# logmsrp vs other numerical vars, some logged
+# include all num var in model
+# highway and city mpg have slightly higher corr with logmsrp when logged
+ggpairs(logcars, columns = c('logmsrp', 'year', 'popularity', 'logengine_hp', 'loghighway_mpg', 'logcity_mpg'))
+
+ggpairs(logcars, columns = c('logmsrp', 'year', 'popularity', 'engine_hp', 'highway_mpg', 'city_mpg'))
+```
+logmsrp with categorical variables
+```{r warning=FALSE}
+hetcor(logcars$logmsrp, logcars$engine_fuel_type, logcars$engine_cylinders, logcars$market_category, logcars$vehicle_size, logcars$make, logcars$model, logcars$transmission_type, logcars$driven_wheels, logcars$number_of_doors, logcars$vehicle_style)
+# caution: takes a few mins to run. here is output to save you time in desc order
+# engine_cylinders : .5578 
+# engine_fuel_type : -.4082
+# vehicle_size : .2766
+# transmission_type : -.2544
+# make : -.2271
+# market_category : -.1893
+# driven_wheels : -.07438
+# number_of_doors : -.06646
+# vehicle_style : .04083
+# model : -.01161
 ```
 
 # Complex Model
