@@ -6,12 +6,13 @@ output: html_document
 # Data Prep
 
 Load the necessary packages
-```{r}
+```{r message=FALSE}
 library(tidyverse)
 library(janitor)
 library(naniar)
 library(polycor)
 library(cowplot)
+library(GGally)
 library(leaps)
 library(olsrr)
 library(caret)
@@ -214,28 +215,23 @@ train <- cars[index$train, ]
 valid <- cars[index$valid, ]
 test <- cars[index$test, ]
 ```
-logmsrp correlation with numerical variables
+log msrp; correlation with numerical variables
 ```{r}
-library(GGally)
-library(ggpairs)
-logcars <- cars %>% mutate(logmsrp = log(msrp), logengine_hp = log(engine_hp), loghighway_mpg = log(highway_mpg), logcity_mpg = log(city_mpg))
-
-# logmsrp vs numerical vars, some logged
-# include all num var in model
-# highway and city mpg have slightly higher corr with logmsrp when logged
-ggpairs(logcars, columns = c('logmsrp', 'year', 'popularity', 'logengine_hp', 'loghighway_mpg', 'logcity_mpg'))
-
+cars <- cars %>% mutate(logmsrp = log(msrp))
 ggpairs(logcars, columns = c('logmsrp', 'year', 'popularity', 'engine_hp', 'highway_mpg', 'city_mpg'))
+# popularity has low correlation but is required for the assignment. maybe run without it later
+# include all num var in model. all corr > .2
+# highway, city mpg have slightly higher corr with logmsrp when logged; keep unlogged bc negligible
 ```
-logmsrp with categorical variables
+log msrp with categorical variables
 ```{r warning=FALSE}
-hetcor(logcars$logmsrp, logcars$engine_fuel_type, logcars$engine_cylinders, logcars$market_category, logcars$vehicle_size, logcars$make, logcars$model, logcars$transmission_type, logcars$driven_wheels, logcars$number_of_doors, logcars$vehicle_style)
+hetcor(cars$logmsrp, cars$engine_fuel_type, cars$engine_cylinders, cars$market_category, cars$vehicle_size, cars$make, cars$model, cars$transmission_type, cars$driven_wheels, cars$number_of_doors, cars$vehicle_style)
 # caution: takes a few mins to run. here is output to save you time in desc order
-# engine_cylinders : .5578
-# engine_fuel_type : -.4082
-# vehicle_size : .2766
-# transmission_type : -.2544
-# make : -.2271
+# engine_cylinders : .5578 # keep in model
+# engine_fuel_type : -.4082 # keep in model
+# vehicle_size : .2766 # keep in model
+# transmission_type : -.2544 # keep in model
+# make : -.2271 # maybe keep in model
 # market_category : -.1893
 # driven_wheels : -.07438
 # number_of_doors : -.06646
@@ -244,7 +240,7 @@ hetcor(logcars$logmsrp, logcars$engine_fuel_type, logcars$engine_cylinders, logc
 ```
 Fit the model
 ```{r}
-fit.simple <- lm(logmsrp~year+popularity+engine_hp+highway_mpg+city_mpg+engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, data=logcars)
+fit.simple <- lm(logmsrp~year+popularity+engine_hp+highway_mpg+city_mpg+engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, data=cars)
 ols_regress(fit.simple) # view model summary, parameter estimates
 ols_vif_tol(fit.simple) # to view VIF. nothing too concerning except electric (engine_fuel_type) & direct_drive (transmission_type)
 
@@ -260,6 +256,29 @@ ols_plot_diagnostics(fit.simple, print_plot = FALSE) # view residual plots
 # residual qqplot: veers off a bit at the higher end
 # cook's d looks great; no large influential obs
 # outlier & leverage plot: few obs with outliers, leverage; not unexpected with 10k obs
+```
+lasso
+```{r}
+x=model.matrix(logmsrp~.-msrp,train)[,-2]
+y=log(train$logmsrp)
+xtest<-model.matrix(logmsrp~.-msrp,test)[,-1]
+ytest<-log(test$logmsrp)
+grid=10^seq(10,-2, length =100)
+lasso.mod=glmnet(x,y,alpha=1, lambda =grid)
+cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
+plot(cv.out)
+bestlambda<-cv.out$lambda.min  #Optimal penalty parameter.  You can make this call visually.
+lasso.pred=predict (lasso.mod ,s=bestlambda ,newx=xtest)
+testMSE_LASSO<-mean((ytest-lasso.pred)^2)
+testMSE_LASSO
+```
+forward selection
+```{r}
+selection.fwd <- regsubsets(logmsrp~.-msrp, data=cars, method="forward", nvmax=10)
+coef(selection.fwd,10)
+summary(selection.fwd)$adjr2
+summary(selection.fwd)$bic
+summary(selection.fwd)$rss
 ```
 
 # Complex Model
