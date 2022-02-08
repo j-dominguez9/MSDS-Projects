@@ -315,6 +315,92 @@ ols_plot_diagnostics(fit.simple, print_plot = FALSE) # view residual plots
 
 # Parametric Model
 ```{r}
+# decision tree but each leaf represents a numberic value.
+# splits are determined by trying a certain amount of thresholds and calculating Sum Squared Residuals
+# for predictions, the average value of the bucket/leaf that an observation falls into is what is used as the predicted value. 
+# a linear relationship between independent and dependent variables is no longer needed, and "interactions" do not need to be specified. 
+# risk of overfitting by including too many variables that do not add value (bias/variance trade off) 
+# risk of overfitting by including too many "leaves", too high of a tree depth
+# this is mitigated by limiting minimum number of observations needed for a given bucket. Other methods can be done, such as ensuring fit improves CP metric by a certain amount, or limiting overall tree depth. 
 
+#function for calculating ASE
+ASE <- function(actual, predicted) {(mean ((actual - predicted)^2))}
+
+set.seed(7)
+
+library(splitTools) # data partition
+index <- partition(cars$msrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
+train <- cars[index$train, ]
+valid <- cars[index$valid, ]
+test <- cars[index$test, ]
+
+#first model using min bucket size of 100 to prevent overfitting
+tree1 <- rpart(log(msrp) ~ highway_mpg + year + engine_hp + market_category + engine_cylinders, data = train, method = 'anova',
+                    control = rpart.control(minbucket = 100))
+treep1 <- exp(predict(tree1, test))
+
+rpart.plot(tree1, type = 1, digits = 3, fallen.leaves = TRUE)
+
+ASE(test$msrp, treep1)
+
+sqrt(ASE(test$msrp, treep1))
+
+#second model using cross validation to determine max depth, optimizing for rmse
+trctrl <- trainControl(method = 'repeatedcv', repeats = 3, number = 10)
+tree2 <- train(log(msrp) ~ highway_mpg + year + engine_hp + market_category + engine_cylinders, trControl = trctrl, data = train, method = "rpart2")
+
+treep2 <- exp(predict(tree2, test))
+
+ASE(test$msrp, treep2)
+
+sqrt(ASE(test$msrp, treep2))
+
+#model three like first but using unlogged msrp
+tree3 <- rpart(msrp ~ highway_mpg + year + engine_hp + market_category + engine_cylinders, data = train, method = 'anova',
+                    control = rpart.control(minbucket = 100))
+
+treep3 <- predict(tree3, test)
+
+rpart.plot(tree3, type = 1, digits = 3, fallen.leaves = TRUE)
+
+ASE(test$msrp, treep3)
+
+sqrt(ASE(test$msrp, treep3))
+
+#model 4 with all variables and unlogged msrp
+tree4 <- rpart(msrp ~., data = train, method = 'anova',
+                    control = rpart.control(minbucket = 100))
+treep4 <- predict(tree4, test)
+
+rpart.plot(tree4, type = 1, digits = 3, fallen.leaves = TRUE)
+
+ASE(test$msrp, treep4)
+
+sqrt(ASE(test$msrp, treep4))
+
+#graphing
+test2 <- test
+test2$predicted1 <- treep1
+test2$predicted2 <- treep2
+test2$predicted3 <- treep3
+test2$predicted4 <- treep4
+p1 <- test2 %>% ggplot(aes(x = predicted1, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
+p2 <- test2 %>% ggplot(aes(x = predicted2, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
+p3 <- test2 %>% ggplot(aes(x = predicted3, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
+p4 <- test2 %>% ggplot(aes(x = predicted4, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
+
+library(cowplot)
+plot_grid(p1, p2, p3, p4)
+
+# RMSE and AIC for each model. The logged models (1 + 2) do not compute properly with this function
+library(regclass)
+
+summarize_tree(tree1)
+
+summarize_tree(tree2$finalModel)
+
+summarize_tree(tree3)
+
+summarize_tree(tree4)
 ```
 
