@@ -231,7 +231,7 @@ ggpairs(cars, columns = colnames(cor.numvars))
 # include all num var in model. all corr > .2
 # highway, city mpg have slightly higher corr with logmsrp when logged; keep unlogged bc negligible
 ```
-log msrp; EDA / correlation with *categorical* variables
+log msrp. Correlation with *categorical* variables
 ```{r warning=FALSE}
 hetcor(cars$logmsrp, cars$engine_fuel_type, cars$engine_cylinders, cars$market_category, cars$vehicle_size, cars$make, cars$model, cars$transmission_type, cars$driven_wheels, cars$number_of_doors, cars$vehicle_style)
 # caution: takes a few mins to run. here is output to save you time in desc order
@@ -247,25 +247,16 @@ hetcor(cars$logmsrp, cars$engine_fuel_type, cars$engine_cylinders, cars$market_c
 # model : -.01161
 
 # eda in order of highest correlation with logmsrp; check if factors are ordered
-# did not plot make, model, market_category bc insanely high # of levels
-pairs <- ggpairs(data=cars, columns = c('logmsrp', 'engine_cylinders', 'engine_fuel_type', 'vehicle_size', 'transmission_type'))
+# did not include make, model, market_category bc insanely high # of levels
+pairs <- ggpairs(data=cars, columns = c('logmsrp', 'engine_cylinders', 'engine_fuel_type', 'vehicle_size', 'transmission_type', 'driven_wheels', 'number_of_doors', 'vehicle_style'), cardinality_threshold = 16)
+
 plots <- lapply(1:pairs$ncol, function(j) getPlot(pairs, i = 1, j = j))
 ggmatrix(
-    plots,
-    nrow = 1,
-    ncol = pairs$ncol,
-    xAxisLabels = pairs$xAxisLabels,
-    yAxisLabels = pairs$yAxisLabels
-)
-
-pairs2 <- ggpairs(data=cars, columns = c('logmsrp', 'driven_wheels', 'number_of_doors', 'vehicle_style'), cardinality_threshold = 16)
-plots <- lapply(1:pairs2$ncol, function(j) getPlot(pairs2, i = 1, j = j))
-ggmatrix(
-    plots,
-    nrow = 1,
-    ncol = pairs$ncol,
-    xAxisLabels = pairs2$xAxisLabels,
-    yAxisLabels = pairs2$yAxisLabels
+plots,
+nrow = 1,
+ncol = pairs$ncol,
+xAxisLabels = pairs$xAxisLabels,
+yAxisLabels = pairs$yAxisLabels
 )
 ```
 Narrow down the predictors
