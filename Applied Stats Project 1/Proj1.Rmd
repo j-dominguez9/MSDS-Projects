@@ -215,7 +215,7 @@ train <- cars[index$train, ]
 valid <- cars[index$valid, ]
 test <- cars[index$test, ]
 ```
-log msrp; correlation with *numerical* variables
+log msrp; EDA / correlation with *numerical* variables
 ```{r}
 cars <- cars %>% mutate(logmsrp = log(msrp))
 ggpairs(logcars, columns = c('logmsrp', 'year', 'popularity', 'engine_hp', 'highway_mpg', 'city_mpg'))
@@ -223,7 +223,7 @@ ggpairs(logcars, columns = c('logmsrp', 'year', 'popularity', 'engine_hp', 'high
 # include all num var in model. all corr > .2
 # highway, city mpg have slightly higher corr with logmsrp when logged; keep unlogged bc negligible
 ```
-log msrp with *categorical* variables
+log msrp; EDA / correlation with *categorical* variables
 ```{r warning=FALSE}
 hetcor(cars$logmsrp, cars$engine_fuel_type, cars$engine_cylinders, cars$market_category, cars$vehicle_size, cars$make, cars$model, cars$transmission_type, cars$driven_wheels, cars$number_of_doors, cars$vehicle_style)
 # caution: takes a few mins to run. here is output to save you time in desc order
@@ -237,6 +237,28 @@ hetcor(cars$logmsrp, cars$engine_fuel_type, cars$engine_cylinders, cars$market_c
 # number_of_doors : -.06646
 # vehicle_style : .04083
 # model : -.01161
+
+# eda in order of highest correlation with logmsrp; check if factors are ordered
+# did not plot make, model, market_category bc insanely high # of levels
+pairs <- ggpairs(data=cars, columns = c('logmsrp', 'engine_cylinders', 'engine_fuel_type', 'vehicle_size', 'transmission_type'))
+plots <- lapply(1:pairs$ncol, function(j) getPlot(pairs, i = 1, j = j))
+ggmatrix(
+    plots,
+    nrow = 1,
+    ncol = pairs$ncol,
+    xAxisLabels = pairs$xAxisLabels,
+    yAxisLabels = pairs$yAxisLabels
+)
+
+pairs2 <- ggpairs(data=cars, columns = c('logmsrp', 'driven_wheels', 'number_of_doors', 'vehicle_style'), cardinality_threshold = 16)
+plots <- lapply(1:pairs2$ncol, function(j) getPlot(pairs2, i = 1, j = j))
+ggmatrix(
+    plots,
+    nrow = 1,
+    ncol = pairs$ncol,
+    xAxisLabels = pairs2$xAxisLabels,
+    yAxisLabels = pairs2$yAxisLabels
+)
 ```
 Narrow down the predictors
 ```{r}
