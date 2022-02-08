@@ -12,6 +12,7 @@ library(janitor)
 library(naniar)
 library(polycor)
 library(cowplot)
+library(corrplot)
 library(GGally)
 library(leaps)
 library(olsrr)
@@ -215,10 +216,22 @@ train <- cars[index$train, ]
 valid <- cars[index$valid, ]
 test <- cars[index$test, ]
 ```
-log msrp; EDA / correlation with *numerical* variables
+log msrp
 ```{r}
 cars <- cars %>% mutate(logmsrp = log(msrp))
-ggpairs(logcars, columns = c('logmsrp', 'year', 'popularity', 'engine_hp', 'highway_mpg', 'city_mpg'))
+```
+Correlation matrix with *numerical* variables : two diff plots. Which do yall prefer?
+```{r}
+numvars <- cars %>% select(logmsrp, popularity, year, engine_hp, highway_mpg, city_mpg)
+cor.numvars <- cor(numvars)
+
+# correlogram. use library(corrplot)
+# high correlation = blue color and larger size
+corrplot(cor.numvars, type = "upper", order = "hclust", tl.col = "black", tl.srt = 45)
+
+# correlation chart. use library(GGally)
+ggpairs(cars, columns = colnames(numvars))
+
 # popularity has low correlation but is required for the assignment. maybe run without it later
 # include all num var in model. all corr > .2
 # highway, city mpg have slightly higher corr with logmsrp when logged; keep unlogged bc negligible
