@@ -216,21 +216,16 @@ train <- cars[index$train, ]
 valid <- cars[index$valid, ]
 test <- cars[index$test, ]
 ```
-log msrp
+log msrp. Correlation matrix with *numerical* variables : two diff plots. Which do yall prefer?
 ```{r}
 cars <- cars %>% mutate(logmsrp = log(msrp))
-```
-Correlation matrix with *numerical* variables : two diff plots. Which do yall prefer?
-```{r}
-numvars <- cars %>% select(logmsrp, popularity, year, engine_hp, highway_mpg, city_mpg)
-cor.numvars <- cor(numvars)
+cor.numvars <- cars %>% select(logmsrp, popularity, year, engine_hp, highway_mpg, city_mpg) %>% cor()
 
-# correlogram. use library(corrplot)
-# high correlation = blue color and larger size
+# correlogram / high correlation = blue color and larger size / library(corrplot) ; 
 corrplot(cor.numvars, type = "upper", order = "hclust", tl.col = "black", tl.srt = 45)
 
-# correlation chart. use library(GGally)
-ggpairs(cars, columns = colnames(numvars))
+# correlation chart / library(GGally)
+ggpairs(cars, columns = colnames(cor.numvars))
 
 # popularity has low correlation but is required for the assignment. maybe run without it later
 # include all num var in model. all corr > .2
