@@ -216,7 +216,7 @@ train <- cars[index$train, ]
 valid <- cars[index$valid, ]
 test <- cars[index$test, ]
 ```
-log msrp. Correlation matrix with *numerical* variables : two diff plots. Which do yall prefer?
+log(msrp). Correlation matrix with *numerical* variables : two diff plots. Which do yall prefer?
 ```{r}
 cars <- cars %>% mutate(logmsrp = log(msrp))
 cor.numvars <- cars %>% select(logmsrp, popularity, year, engine_hp, highway_mpg, city_mpg) %>% cor()
@@ -231,7 +231,7 @@ ggpairs(cars, columns = colnames(cor.numvars))
 # include all num var in model. all corr > .2
 # highway, city mpg have slightly higher corr with logmsrp when logged; keep unlogged bc negligible
 ```
-log msrp. Correlation with *categorical* variables
+log(msrp). Correlation with *categorical* variables : two diff plots
 ```{r warning=FALSE}
 hetcor(cars$logmsrp, cars$engine_fuel_type, cars$engine_cylinders, cars$market_category, cars$vehicle_size, cars$make, cars$model, cars$transmission_type, cars$driven_wheels, cars$number_of_doors, cars$vehicle_style)
 # caution: takes a few mins to run. here is output to save you time in desc order
@@ -248,6 +248,7 @@ hetcor(cars$logmsrp, cars$engine_fuel_type, cars$engine_cylinders, cars$market_c
 
 # eda in order of highest correlation with logmsrp; check if factors are ordered
 # did not include make, model, market_category bc insanely high # of levels
+
 pairs <- ggpairs(data=cars, columns = c('logmsrp', 'engine_cylinders', 'engine_fuel_type', 'vehicle_size', 'transmission_type', 'driven_wheels', 'number_of_doors', 'vehicle_style'), cardinality_threshold = 16)
 
 plots <- lapply(1:pairs$ncol, function(j) getPlot(pairs, i = 1, j = j))
@@ -259,15 +260,14 @@ xAxisLabels = pairs$xAxisLabels,
 yAxisLabels = pairs$yAxisLabels
 )
 ```
-Narrow down the predictors
+Narrow down the predictors, fit full model
 ```{r}
-fit.simple <- lm(logmsrp~year+popularity+engine_hp+highway_mpg+city_mpg+engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, data=cars)
-ols_regress(fit.simple) # view model summary, parameter estimates
-ols_vif_tol(fit.simple) # to view VIF. nothing too concerning except electric (engine_fuel_type) & direct_drive (transmission_type)
+# chose all numerical vars (corr > 20% w logmsrp) and top 4 cat. vars (corr > 25% w logmsrp)
+predictors <- cars %>% select(logmsrp, popularity, year, engine_hp, highway_mpg, city_mpg, engine_cylinders, engine_fuel_type, vehicle_size, transmission_type)
 
-# fit.simple: adjr2 .797 rmse=0.203 mae=0.153 interesting that engine_cylinders has high corr with logmsrp yet insig here
-# the full model with all predictors and unlogged msrp : adj.r2=.968 rmse=3656 mae=2407
-# full model with all predictors and logmsrp : adjr2 .966 rmse=.083 mae=.062
+fit.all <- lm(logmsrp~., data=predictors)
+ols_regress(fit.all) # view model summary, parameter estimates
+ols_vif_tol(fit.all) # view vif. a couple are concerning
 ```
 Lasso
 ```{r}
@@ -288,11 +288,41 @@ coef(lasso.mod,s=bestlambda)
 ```
 Forward selection
 ```{r}
-selection.fwd <- regsubsets(logmsrp~.-msrp, data=cars, method="forward", nvmax=10)
-coef(selection.fwd,10)
-summary(selection.fwd)$adjr2
-summary(selection.fwd)$bic
-summary(selection.fwd)$rss
+forward <- regsubsets(logmsrp~popularity + year + engine_hp + highway_mpg + city_mpg + engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, data=cars, method="forward", nvmax=10)
+
+summary(forward)$adjr2
+summary(forward)$bic
+summary(forward)$rss
+
+forward.train <- regsubsets(logmsrp~popularity + year + engine_hp + highway_mpg + city_mpg + engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, data=train, method="forward", nvmax=10)
+
+# predict function
+predict.regsubsets =function (object , newdata ,id ,...){
+  form=as.formula (object$call [[2]])
+  mat=model.matrix(form ,newdata )
+  coefi=coef(object ,id=id)
+  xvars=names(coefi)
+  mat[,xvars]%*%coefi
+}
+
+# optimal predictors based on ase. 7 is best
+testASE<-c()
+for (i in 1:10){
+    predictions<-predict.regsubsets(object=forward.train,newdata=test,id=i) 
+    testASE[i]<-mean((log(test$logmsrp)-predictions)^2)
+}
+par(mfrow=c(1,1))
+plot(1:10,testASE,type="l",xlab="# of predictors",ylab="test vs train ASE",ylim=c(10, 80))
+index<-which(testASE==min(testASE))
+points(index,testASE[index],col="red",pch=10)
+rss<-summary(reg.fwd)$rss
+lines(1:10,rss/9824,lty=3,col="blue")
+
+forward.final <- regsubsets(logmsrp~popularity + year + engine_hp + highway_mpg + city_mpg + engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, data=cars, method="forward", nvmax=7)
+
+coef(forward.final,7)
+forward.final <-lm(logmsrp~year+engine_hp+vehicle_size+engine_fuel_type,data=cars)
+summary(forward.final)
 ```
 Fit the model
 ```{r}
