@@ -260,94 +260,51 @@ xAxisLabels = pairs$xAxisLabels,
 yAxisLabels = pairs$yAxisLabels
 )
 ```
-Narrow down the predictors, fit full model
+custom model
 ```{r}
 # chose all numerical vars (corr > 20% w logmsrp) and top 4 cat. vars (corr > 25% w logmsrp)
-predictors <- cars %>% select(logmsrp, popularity, year, engine_hp, highway_mpg, city_mpg, engine_cylinders, engine_fuel_type, vehicle_size, transmission_type)
 
-fit.all <- lm(logmsrp~., data=predictors)
-ols_regress(fit.all) # view model summary, parameter estimates
-ols_vif_tol(fit.all) # view vif. a couple are concerning
-```
-Lasso
-```{r}
-x=model.matrix(logmsrp~popularity + year + engine_hp + highway_mpg + city_mpg + engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, train)
-y=log(train$logmsrp)
+mod1 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_cylinders+engine_fuel_type+vehicle_size+transmission_type, data=cars)
+ols_vif_tol(model) # high vif for engine_cylinders, transmission_type, city_mpg so remove them for mod2
+mod2 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars) 
+ols_vif_tol(mod2) # vif still high, remove engine_fuel_type for mod3
+mod3 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
+ols_vif_tol(mod3) # vifs look great
+ols_regress(mod3) # view model summary
 
-xtest <- model.matrix(logmsrp~popularity + year + engine_hp + highway_mpg + city_mpg + engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, test)
-ytest=log(test$logmsrp)
+# now to test/train data
+set.seed(7)
+library(splitTools) # data partition
 
-grid=10^seq(10,-2, length =100)
-lasso.mod=glmnet(x,y,alpha=1, lambda =grid)
+index <- partition(cars$msrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
+train <- cars[index$train, ]
+valid <- cars[index$valid, ]
+test <- cars[index$test, ]
 
-cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
-plot(cv.out)
+reg.fwd=regsubsets(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train, method="forward",nvmax=6)
 
-bestlambda<-cv.out$lambda.min  #Optimal penalty parameter.  You can make this call visually.
-lasso.pred=predict (lasso.mod ,s=bestlambda ,newx=xtest)
-
-testMSE_LASSO<-mean((ytest-lasso.pred)^2)
-testMSE_LASSO
-
-coef(lasso.mod,s=bestlambda)
-```
-Forward selection
-```{r}
-forward <- regsubsets(logmsrp~popularity + year + engine_hp + highway_mpg + city_mpg + engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, data=cars, method="forward", nvmax=10)
-
-summary(forward)$adjr2
-summary(forward)$bic
-summary(forward)$rss
-
-forward.train <- regsubsets(logmsrp~popularity + year + engine_hp + highway_mpg + city_mpg + engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, data=train, method="forward", nvmax=10)
-
-# predict function
-predict.regsubsets =function (object , newdata ,id ,...){
-  form=as.formula (object$call [[2]])
-  mat=model.matrix(form ,newdata )
-  coefi=coef(object ,id=id)
-  xvars=names(coefi)
-  mat[,xvars]%*%coefi
-}
-
-# optimal predictors based on ase. 7 is best
 testASE<-c()
-for (i in 1:10){
-    predictions<-predict.regsubsets(object=forward.train,newdata=test,id=i) 
+for (i in 1:6){
+    predictions<-predict.regsubsets(object=reg.fwd,newdata=test,id=i) 
     testASE[i]<-mean((log(test$logmsrp)-predictions)^2)
 }
 par(mfrow=c(1,1))
-plot(1:10,testASE,type="l",xlab="# of predictors",ylab="test vs train ASE",ylim=c(10, 80))
+plot(1:6,testASE,type="l",xlab="# of predictors",ylab="test vs train ASE",ylim=c(10, 100))
 index<-which(testASE==min(testASE))
 points(index,testASE[index],col="red",pch=10)
 rss<-summary(reg.fwd)$rss
-lines(1:10,rss/9824,lty=3,col="blue")
-
-forward.final <- regsubsets(logmsrp~popularity + year + engine_hp + highway_mpg + city_mpg + engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, data=cars, method="forward", nvmax=7)
-
-coef(forward.final,7)
-forward.final <-lm(logmsrp~year+engine_hp+vehicle_size+engine_fuel_type,data=cars)
-summary(forward.final)
-```
-Fit the model
-```{r}
-
+lines(1:6,rss/100,lty=3,col="blue")
 ```
 Assumptions check
 ```{r}
-ols_plot_diagnostics(fit.simple, print_plot = FALSE) # view residual plots
-# residual vs predicted plot looks good, couple obs veer away at upper margin
-# residual histogram looks great
-# residual qqplot: veers off a bit at the higher end
-# cook's d looks great; no large influential obs
-# outlier & leverage plot: few obs with outliers, leverage; not unexpected with 10k obs
+ols_plot_diagnostics(mod3, print_plot = FALSE)
 ```
 # Complex Model
 ```{r}
 
 ```
 
-# Parametric Model
+# Nonparametric Model
 ```{r}
 # decision tree but each leaf represents a numberic value.
 # splits are determined by trying a certain amount of thresholds and calculating Sum Squared Residuals
