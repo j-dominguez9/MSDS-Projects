@@ -288,8 +288,29 @@ simple.train <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_typ
 ASE <- function(actual, predicted) {(mean ((actual - predicted)^2))}
 ASE(test$logmsrp, predicted = predict(simple.train, test))
 # test metrics: ase=0.04355828
-
 ```
+lasso
+```{r}
+library(glmnet)
+x=model.matrix(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, train)
+y=log(train$logmsrp)
+xtest<-model.matrix(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, test)
+ytest<-log(test$logmsrp)
+
+lasso.mod <- glmnet(x,y,alpha=1)
+cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
+plot(cv.out) # 11 predictors is optimal
+
+bestlambda<-cv.out$lambda.min
+lasso.pred <- predict(lasso.mod, s=bestlambda, newx=xtest)
+
+testMSE_LASSO<-mean((ytest-lasso.pred)^2)
+testMSE_LASSO # 0.0003952727
+
+coef(lasso.mod, s=bestlambda)
+# predictors chosen: popularity, year, engine_hp, highway_mpg, engine_fuel_type, vehicle_style
+```
+
 Assumptions check
 ```{r}
 ols_plot_diagnostics(mod3, print_plot = FALSE)
