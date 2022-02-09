@@ -289,7 +289,7 @@ ASE <- function(actual, predicted) {(mean ((actual - predicted)^2))}
 ASE(test$logmsrp, predicted = predict(simple.train, test))
 # test metrics: ase=0.04355828
 ```
-Lasso with mod3
+Lasso with vars from mod3
 ```{r}
 library(glmnet)
 x=model.matrix(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, train)
@@ -311,7 +311,7 @@ testMSE_LASSO # 0.0003952727.
 coef(lasso.mod, s=bestlambda)
 # predictors chosen: popularity, year, engine_hp, highway_mpg, engine_fuel_type, vehicle_style
 ```
-Lasso with mod1 (test ASE negligible difference compared to mod3 but more variables. keep mod1 instead)
+Lasso with vars from mod1 (test ASE negligible difference compared to mod3 but more variables. keep previous model instead)
 ```{r}
 set.seed(7)
 index <- partition(cars$msrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
@@ -333,9 +333,15 @@ testMSE_LASSO<-mean((ytest-lasso.pred)^2)
 testMSE_LASSO # 0.0003574083
 coef(lasso.mod, s=bestlambda) # view predictors
 ```
-Assumptions check
+Fit model, assumptions check
 ```{r}
-ols_plot_diagnostics(mod3, print_plot = FALSE)
+simple <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
+ols_aic(simple) # aic = -2706.836
+ols_plot_diagnostics(simple, print_plot = FALSE)
+# residual histogram, cook's d chart looks great
+# qq plot pretty good. some veering off at both extreme ends
+# veryyyy few obs with outlier & leverage (expected for sample size this large)
+# residual vs predicted looks good but some veering off at upper end
 ```
 # Complex Model
 ```{r}
