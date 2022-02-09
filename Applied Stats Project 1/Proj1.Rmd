@@ -211,7 +211,7 @@ Split data
 set.seed(7)
 library(splitTools) # data partition
 
-index <- partition(cars$msrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
+index <- partition(cars$logmsrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
 train <- cars[index$train, ]
 valid <- cars[index$valid, ]
 test <- cars[index$test, ]
@@ -271,20 +271,25 @@ ols_vif_tol(fit.all) # view vif. a couple are concerning
 ```
 Lasso
 ```{r}
-x=model.matrix(logmsrp~.-msrp,train)[,-2]
+x=model.matrix(logmsrp~popularity + year + engine_hp + highway_mpg + city_mpg + engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, train)
 y=log(train$logmsrp)
-xtest<-model.matrix(logmsrp~.-msrp,test)[,-1]
-ytest<-log(test$logmsrp)
+
+xtest <- model.matrix(logmsrp~popularity + year + engine_hp + highway_mpg + city_mpg + engine_cylinders + engine_fuel_type + vehicle_size + transmission_type, test)
+ytest=log(test$logmsrp)
+
 grid=10^seq(10,-2, length =100)
 lasso.mod=glmnet(x,y,alpha=1, lambda =grid)
+
 cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
 plot(cv.out)
+
 bestlambda<-cv.out$lambda.min  #Optimal penalty parameter.  You can make this call visually.
 lasso.pred=predict (lasso.mod ,s=bestlambda ,newx=xtest)
+
 testMSE_LASSO<-mean((ytest-lasso.pred)^2)
 testMSE_LASSO
-coef(lasso.mod,s=bestlambda)
 
+coef(lasso.mod,s=bestlambda)
 ```
 Forward selection
 ```{r}
