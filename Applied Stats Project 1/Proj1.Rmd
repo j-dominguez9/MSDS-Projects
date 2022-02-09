@@ -271,7 +271,7 @@ ols_vif_tol(mod2) # vif still high, remove engine_fuel_type for mod3
 mod3 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
 ols_vif_tol(mod3) # vifs look great
 ols_regress(mod3) # view model summary
-# full data metrics: adjr2=.781 rmse=.211 mae/ase=.044
+# full data metrics: adjr2=.781 rmse=.211 ase=.044
 
 # now to test/train data
 set.seed(7)
@@ -283,10 +283,11 @@ valid <- cars[index$valid, ]
 test <- cars[index$test, ]
 
 simple.train <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train)
-# train metrics: adjr2=.779 rmse=212 mse/ase=.045
+# train metrics: adjr2=.779 rmse=212 ase=.045
 
-mean((test$logmsrp - predict(simple.train, test)) ^ 2)
-# 0.04355828
+ASE <- function(actual, predicted) {(mean ((actual - predicted)^2))}
+ASE(test$logmsrp, predicted = predict(simple.train, test))
+# test metrics: ase=0.04355828
 
 ```
 Assumptions check
