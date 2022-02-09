@@ -271,6 +271,7 @@ ols_vif_tol(mod2) # vif still high, remove engine_fuel_type for mod3
 mod3 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
 ols_vif_tol(mod3) # vifs look great
 ols_regress(mod3) # view model summary
+# full data metrics: adjr2=.781 rmse=.211 mae/ase=.044
 
 # now to test/train data
 set.seed(7)
@@ -281,19 +282,12 @@ train <- cars[index$train, ]
 valid <- cars[index$valid, ]
 test <- cars[index$test, ]
 
-reg.fwd=regsubsets(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train, method="forward",nvmax=6)
+simple.train <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train)
+# train metrics: adjr2=.779 rmse=212 mse/ase=.045
 
-testASE<-c()
-for (i in 1:6){
-    predictions<-predict.regsubsets(object=reg.fwd,newdata=test,id=i) 
-    testASE[i]<-mean((log(test$logmsrp)-predictions)^2)
-}
-par(mfrow=c(1,1))
-plot(1:6,testASE,type="l",xlab="# of predictors",ylab="test vs train ASE",ylim=c(10, 100))
-index<-which(testASE==min(testASE))
-points(index,testASE[index],col="red",pch=10)
-rss<-summary(reg.fwd)$rss
-lines(1:6,rss/100,lty=3,col="blue")
+mean((test$logmsrp - predict(simple.train, test)) ^ 2)
+# 0.04355828
+
 ```
 Assumptions check
 ```{r}
