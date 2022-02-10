@@ -265,7 +265,7 @@ Custom variable selection
 # chose all numerical vars (corr > 20% w logmsrp) and top 4 cat. vars (corr > 25% w logmsrp)
 
 mod1 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_cylinders+engine_fuel_type+vehicle_size+transmission_type, data=cars)
-ols_vif_tol(model) # high vif for engine_cylinders, transmission_type, city_mpg so remove them for mod2
+ols_vif_tol(mod1) # high vif for engine_cylinders, transmission_type, city_mpg so remove them for mod2
 mod2 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars) 
 ols_vif_tol(mod2) # vif still high, remove engine_fuel_type for mod3
 mod3 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
@@ -282,6 +282,8 @@ valid <- cars[index$valid, ]
 test <- cars[index$test, ]
 
 simple.train <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train)
+ols_regress(simple.train)
+
 # train metrics: adjr2=.779 rmse=212 ase=.045
 
 ASE <- function(actual, predicted) {(mean ((actual - predicted)^2))}
@@ -305,7 +307,7 @@ bestlambda
 lasso.pred <- predict(lasso.mod, s=bestlambda, newx=xtest)
 
 testMSE_LASSO<-mean((ytest-lasso.pred)^2)
-testMSE_LASSO # 0.0003952727. 
+testMSE_LASSO # 0.0435674 
 
 coef(lasso.mod, s=bestlambda)
 # predictors chosen: popularity, year, engine_hp, highway_mpg, engine_fuel_type, vehicle_style
@@ -319,9 +321,9 @@ valid <- cars[index$valid, ]
 test <- cars[index$test, ]
 
 x=model.matrix(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_cylinders+engine_fuel_type+vehicle_size+transmission_type, train)
-y=log(train$logmsrp)
+y=train$logmsrp
 xtest<-model.matrix(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_cylinders+engine_fuel_type+vehicle_size+transmission_type, test)
-ytest<-log(test$logmsrp)
+ytest<-test$logmsrp
 lasso.mod <- glmnet(x,y,alpha=1)
 cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
 plot(cv.out) # 21 predictors chosen
