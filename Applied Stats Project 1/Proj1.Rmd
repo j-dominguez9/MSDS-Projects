@@ -428,75 +428,43 @@ metrics_galore(valid2$logmsrp, complex.valid)
 # risk of overfitting by including too many variables that do not add value (bias/variance trade off) 
 # risk of overfitting by including too many "leaves", too high of a tree depth
 # this is mitigated by limiting minimum number of observations needed for a given bucket, ensuring next split improves CP metric by a certain amount, or limiting overall tree depth. 
-
 #function for calculating ASE
 ASE <- function(actual, predicted) {(mean ((actual - predicted)^2))}
-
 set.seed(7)
-
 library(splitTools) # data partition
 index <- partition(cars$msrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
 train <- cars[index$train, ]
 valid <- cars[index$valid, ]
 test <- cars[index$test, ]
-
-#first model using min bucket size of 100 to prevent overfitting
+#first model using min bucket size of 100 to prevent overfitting and high correlation variables only
 tree1 <- rpart(log(msrp) ~ highway_mpg + year + engine_hp + market_category + engine_cylinders, data = train, method = 'anova',
                     control = rpart.control(minbucket = 100))
 treep1 <- exp(predict(tree1, test))
-
 rpart.plot(tree1, type = 1, digits = 3, fallen.leaves = TRUE)
-
 ASE(test$msrp, treep1)
-
 sqrt(ASE(test$msrp, treep1))
-
 #model two like first but using unlogged msrp
 tree2 <- rpart(msrp ~ highway_mpg + year + engine_hp + market_category + engine_cylinders, data = train, method = 'anova',
                     control = rpart.control(minbucket = 100))
-
 treep2 <- predict(tree2, test)
-
 rpart.plot(tree2, type = 1, digits = 3, fallen.leaves = TRUE)
-
 ASE(test$msrp, treep2)
-
 sqrt(ASE(test$msrp, treep2))
-
 #model 3 with all variables and unlogged msrp
-tree3 <- rpart(msrp ~., data = train, method = 'anova',
+tree3 <- rpart(msrp ~. -logmsrp, data = train, method = 'anova',
                     control = rpart.control(minbucket = 100))
 treep3 <- predict(tree3, test)
-
 rpart.plot(tree3, type = 1, digits = 3, fallen.leaves = TRUE)
-
 ASE(test$msrp, treep3)
-
 sqrt(ASE(test$msrp, treep3))
 
-#model 4 with all variables except model and unlogged msrp 
-tree4 <- rpart(msrp ~ engine_hp + market_category + make + engine_cylinders + vehicle_size + engine_fuel_type + transmission_type + vehicle_style + city_mpg + highway_mpg, data = train, method = 'anova',
-                    control = rpart.control(minbucket = 100))
-
-treep4 <- predict(tree4, test)
-
-rpart.plot(tree4, type = 1, digits = 3, fallen.leaves = TRUE)
-
-ASE(test$msrp, treep4)
-
-sqrt(ASE(test$msrp, treep4))
-
-#model 5 with caret all variables except model - performs but less risk of overfitting
+#model 4 with caret all variables - performs worse but less risk of overfitting
 trctrl <- trainControl(method = 'repeatedcv', repeats = 3, number = 10)
-tree5 <- train(msrp ~ engine_hp + market_category + make + engine_cylinders + vehicle_size + engine_fuel_type + transmission_type + vehicle_style + city_mpg + highway_mpg + make, data = train, method = "rpart2")
-
-treep5 <- predict(tree5, test)
-
-ASE(test$msrp, treep5)
-
-sqrt(ASE(test$msrp, treep5))
-
-rpart.plot(tree5$finalModel, type = 1, digits = 3, fallen.leaves = TRUE)
+tree4 <- train(msrp ~ . -logmsrp, data = train, method = "rpart2")
+treep4 <- predict(tree4, test)
+ASE(test$msrp, treep4)
+sqrt(ASE(test$msrp, treep4))
+rpart.plot(tree4$finalModel, type = 1, digits = 3, fallen.leaves = TRUE)
 
 #graphing
 test2 <- test
@@ -504,27 +472,20 @@ test2$predicted1 <- treep1
 test2$predicted2 <- treep2
 test2$predicted3 <- treep3
 test2$predicted4 <- treep4
-test2$predicted5 <- treep5
 p1 <- test2 %>% ggplot(aes(x = predicted1, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
 p2 <- test2 %>% ggplot(aes(x = predicted2, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
 p3 <- test2 %>% ggplot(aes(x = predicted3, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
 p4 <- test2 %>% ggplot(aes(x = predicted4, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
-p5 <- test2 %>% ggplot(aes(x = predicted5, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
-library(cowplot)
-plot_grid(p2, p3, p4, p5)
 
+library(cowplot)
+plot_grid(p1, p2, p3, p4)
 # RMSE and AIC for each model
 library(regclass)
-
 summarize_tree(tree1)
-
 summarize_tree(tree2)
-
 summarize_tree(tree3)
+summarize_tree(tree4$finalModel)
 
-summarize_tree(tree4)
-
-summarize_tree(tree5$finalModel)
 ```
 # Compare all the models
 ```{r}
@@ -545,8 +506,8 @@ metrics_galore(test$logmsrp, simple.test)
 # Complex model
 
 # Nonparametric model
-np.train <- tree4
-np.test <- predict(tree4, test)
+np.train <- tree3
+np.test <- predict(tree3, test)
 metrics_galore(test$msrp, np.test)
 
 #### Predict VALIDATION 
@@ -557,7 +518,7 @@ metrics_galore(valid$logmsrp, simple.valid)
 # Complex model
 
 # Nonparametric model
-np.valid <- predict(tree4, valid)
+np.valid <- predict(tree3, valid)
 metrics_galore(valid$msrp, np.valid)
 ```
 
