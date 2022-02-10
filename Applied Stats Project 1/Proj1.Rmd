@@ -283,37 +283,42 @@ test <- cars[index$test, ]
 
 simple.train <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train)
 ols_regress(simple.train)
-
 # train metrics: adjr2=.779 rmse=212 ase=.045
 
-ASE <- function(actual, predicted) {(mean ((actual - predicted)^2))}
-ASE(test$logmsrp, predicted = predict(simple.train, test))
-# test metrics: ase=0.04355828
+# validation
+#Really handy predict function
+predict.regsubsets =function (object , newdata ,id ,...){
+  form=as.formula (object$call [[2]])
+  mat=model.matrix(form ,newdata )
+  coefi=coef(object ,id=id)
+  xvars=names(coefi)
+  mat[,xvars]%*%coefi
+}
+
+# validation
+simple.train <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train)
+# predict test
+simple.test <-predict.regsubsets(object=simple.train, newdata=test)
+
+# predict validate
+simple.valid <-predict.regsubsets(object=simple.train, newdata=valid)
+
+metrics_galore <-function(actual, predicted){
+    result<-c(mean((actual- predicted)^2),
+              caret::MAE(actual, predicted),
+              rmse = caret::RMSE(actual, predicted),
+              1-(  (1-(caret::R2(actual, predicted)))*(nrow(train))/(nrow(train)- ncol(train)-1)))
+    names(result)<-c("ASE","MAE","RMSE","Adjusted R2")
+    return(result)
+}
+
+metrics_galore(test$logmsrp, simple.test)
+metrics_galore(valid$logmsrp, simple.valid)
+
 ```
-Lasso with vars from mod3
+Just for kicks: Lasso with variables from mod1 to compare with my custom model
 ```{r}
 library(glmnet)
-x=model.matrix(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, train)
-y=log(train$logmsrp)
-xtest<-model.matrix(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, test)
-ytest<-log(test$logmsrp)
-
-lasso.mod <- glmnet(x,y,alpha=1)
-cv.out=cv.glmnet(x,y,alpha=1) #alpha=1 performs LASSO
-plot(cv.out) # 11 predictors is optimal
-
-bestlambda<-cv.out$lambda.min
-bestlambda
-lasso.pred <- predict(lasso.mod, s=bestlambda, newx=xtest)
-
-testMSE_LASSO<-mean((ytest-lasso.pred)^2)
-testMSE_LASSO # 0.0435674 
-
-coef(lasso.mod, s=bestlambda)
-# predictors chosen: popularity, year, engine_hp, highway_mpg, engine_fuel_type, vehicle_style
-```
-Lasso with vars from mod1 (test ASE negligible difference compared to mod3 but more variables. keep previous model instead)
-```{r}
 set.seed(7)
 index <- partition(cars$msrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
 train <- cars[index$train, ]
@@ -331,8 +336,11 @@ bestlambda<-cv.out$lambda.min
 bestlambda
 lasso.pred <- predict(lasso.mod, s=bestlambda, newx=xtest)
 testMSE_LASSO<-mean((ytest-lasso.pred)^2)
-testMSE_LASSO # 0.0003574083
+testMSE_LASSO # 0.0397921
 coef(lasso.mod, s=bestlambda) # view predictors
+metrics_galore(ytest, lasso.pred)
+
+# test ASE is smaller than my custom model by .003; negligible difference but more variables; keep previous model instead
 ```
 Fit model, assumptions check
 ```{r}
@@ -439,5 +447,37 @@ summarize_tree(tree2$finalModel)
 summarize_tree(tree3)
 
 summarize_tree(tree4)
+```
+# Compare all the models
+```{r}
+metrics_galore <-function(actual, predicted){
+    result<-c(mean((actual- predicted)^2),
+              caret::MAE(actual, predicted),
+              rmse = caret::RMSE(actual, predicted),
+              1-(  (1-(caret::R2(actual, predicted)))*(nrow(train))/(nrow(train)- ncol(train)-1)))
+    names(result)<-c("ASE","MAE","RMSE","Adjusted R2")
+    return(result)
+}
+
+#### Predict TEST
+# Simple model
+simple.train <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train)
+simple.test <-predict.regsubsets(object=simple.train, newdata=test)
+metrics_galore(test$logmsrp, simple.test)
+
+# Complex model
+
+# Nonparametric model
+
+
+#### Predict VALIDATION 
+# Simple model
+simple.valid <-predict.regsubsets(object=simple.train, newdata=valid)
+metrics_galore(valid$logmsrp, simple.valid)
+
+# Complex model
+
+# Nonparametric model
+
 ```
 
