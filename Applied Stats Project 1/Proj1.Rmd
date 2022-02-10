@@ -62,9 +62,11 @@ Confirm that there are zero NA values
 ```{r}
 sum(as.numeric(is.na.data.frame(cars)))
 ```
-Filter observations where msrp is between 2001-150000, year after 2000
+Filter observations where msrp is between 2001-150000, year after 2000.
+
+Log msrp for EDA
 ```{r}
-cars <- cars %>% filter(msrp != 2000 & msrp < 150000 & year >= 2001)
+cars <- cars %>% filter(msrp != 2000 & msrp < 150000 & year >= 2001) %>% mutate(logmsrp = log(msrp))
 # filter further cars <- cars %>% filter(!(year<=2010 & msrp>= 100000))
 ```
 set relevant variables as factors
@@ -216,7 +218,7 @@ train <- cars[index$train, ]
 valid <- cars[index$valid, ]
 test <- cars[index$test, ]
 ```
-log(msrp). Correlation matrix with *numerical* variables : two diff plots. Which do yall prefer?
+Correlation matrix with *numerical* variables : two diff plots. Which do yall prefer?
 ```{r}
 cars <- cars %>% mutate(logmsrp = log(msrp))
 cor.numvars <- cars %>% select(logmsrp, popularity, year, engine_hp, highway_mpg, city_mpg) %>% cor()
@@ -231,7 +233,7 @@ ggpairs(cars, columns = colnames(cor.numvars))
 # include all num var in model. all corr > .2
 # highway, city mpg have slightly higher corr with logmsrp when logged; keep unlogged bc negligible
 ```
-log(msrp). Correlation with *categorical* variables : two diff plots
+Correlation with *categorical* variables : two diff plots
 ```{r warning=FALSE}
 hetcor(cars$logmsrp, cars$engine_fuel_type, cars$engine_cylinders, cars$market_category, cars$vehicle_size, cars$make, cars$model, cars$transmission_type, cars$driven_wheels, cars$number_of_doors, cars$vehicle_style)
 # caution: takes a few mins to run. here is output to save you time in desc order
@@ -264,45 +266,43 @@ Custom variable selection
 ```{r}
 # chose all numerical vars (corr > 20% w logmsrp) and top 4 cat. vars (corr > 25% w logmsrp)
 
-mod1 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_cylinders+engine_fuel_type+vehicle_size+transmission_type, data=cars)
-ols_vif_tol(mod1) # high vif for engine_cylinders, transmission_type, city_mpg so remove them for mod2
-mod2 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars) 
-ols_vif_tol(mod2) # vif still high, remove engine_fuel_type for mod3
-mod3 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
-ols_vif_tol(mod3) # vifs look great
-ols_regress(mod3) # view model summary, estimates
+simple.mod.all <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_cylinders+engine_fuel_type+vehicle_size+transmission_type, data=cars)
+ols_vif_tol(simple.mod.all) # high vif: engine_cylinders, transmission_type, city_mpg 
 
-# now to test/train data
-set.seed(7)
-library(splitTools) # data partition
+# remove engine_cylinders; high vif: transmission type, engine_fuel_type_ city_mpg
+ols_vif_tol(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_fuel_type+vehicle_size+transmission_type, data=cars)
 
-index <- partition(cars$msrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
-train <- cars[index$train, ]
-valid <- cars[index$valid, ]
-test <- cars[index$test, ]
+# remove transmission_type; high vif: city_mpg, engine_fuel_type
+ols_vif_tol(lm(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_fuel_type+vehicle_size, data=cars))
 
+# remove city_mpg; vif of one level of engine_fuel_type a bit high but will condense this category to lower vif
+ols_vif_tol(lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars))
+
+simple.mod <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
+ols_vif_tol(simple.mod) # vifs look great
+ols_regress(simple.mod) # view model summary, estimates
+
+### ASSUMPTIONS CHECK
+ols_step_forward_aic(simple.mod) # view aic, ss, rss, r2, adjr2 (last row)
+plot(ols_step_all_possible(simple.mod), print_plot = F) # view cp mallows, aic, sbic, sbc
+ols_plot_diagnostics(simple.mod, print_plot = FALSE)
+# residual histogram, cook's d chart looks great
+# qq plot pretty good. some veering off at both extreme ends
+# veryyyy few obs with outlier & leverage (expected for sample size this large)
+# residual vs predicted looks good but some veering off at upper end
+
+### TRAIN/TEST/VALIDATE
 simple.train <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train)
 ols_regress(simple.train)
 # train metrics: adjr2=.779 rmse=212 ase=.045
 
-# validation
-#Really handy predict function
-predict.regsubsets =function (object , newdata ,id ,...){
-  form=as.formula (object$call [[2]])
-  mat=model.matrix(form ,newdata )
-  coefi=coef(object ,id=id)
-  xvars=names(coefi)
-  mat[,xvars]%*%coefi
-}
-
-# validation
-simple.train <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train)
+### VALIDATION
 # predict test
-simple.test <-predict.regsubsets(object=simple.train, newdata=test)
-
+simple.test <- exp(predict(simple.train, test))
 # predict validate
-simple.valid <-predict.regsubsets(object=simple.train, newdata=valid)
+simple.valid <- exp(predict(simple.train, valid))
 
+# function to calculate and print ase, mae, rmse, adjr2
 metrics_galore <-function(actual, predicted){
     result<-c(mean((actual- predicted)^2),
               caret::MAE(actual, predicted),
@@ -314,17 +314,10 @@ metrics_galore <-function(actual, predicted){
 
 metrics_galore(test$logmsrp, simple.test)
 metrics_galore(valid$logmsrp, simple.valid)
-
 ```
-Just for kicks: Lasso with variables from mod1 to compare with my custom model
+Just for kicks: Lasso with variables from simple.mod.all to compare with my custom model
 ```{r}
 library(glmnet)
-set.seed(7)
-index <- partition(cars$msrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
-train <- cars[index$train, ]
-valid <- cars[index$valid, ]
-test <- cars[index$test, ]
-
 x=model.matrix(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_cylinders+engine_fuel_type+vehicle_size+transmission_type, train)
 y=train$logmsrp
 xtest<-model.matrix(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_cylinders+engine_fuel_type+vehicle_size+transmission_type, test)
@@ -340,18 +333,7 @@ testMSE_LASSO # 0.0397921
 coef(lasso.mod, s=bestlambda) # view predictors
 metrics_galore(ytest, lasso.pred)
 
-# test ASE is smaller than my custom model by .003; negligible difference but more variables; keep previous model instead
-```
-Fit model, assumptions check
-```{r}
-mod3 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
-ols_step_forward_aic(mod3) # view aic, ss, rss, r2, adjr2 (last row)
-plot(ols_step_all_possible(mod3), print_plot = F) # view cp mallows, aic, sbic, sbc
-ols_plot_diagnostics(mod3, print_plot = FALSE)
-# residual histogram, cook's d chart looks great
-# qq plot pretty good. some veering off at both extreme ends
-# veryyyy few obs with outlier & leverage (expected for sample size this large)
-# residual vs predicted looks good but some veering off at upper end
+# test ASE smaller than my custom model by .003; negligible difference but more variables; keep my model instead :)
 ```
 
 # Complex Model
@@ -508,8 +490,7 @@ metrics_galore <-function(actual, predicted){
 
 #### Predict TEST
 # Simple model
-simple.train <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train)
-simple.test <-predict.regsubsets(object=simple.train, newdata=test)
+simple.test <- exp(predict(simple.train, newdata=test))
 metrics_galore(test$logmsrp, simple.test)
 
 # Complex model
@@ -519,7 +500,7 @@ metrics_galore(test$logmsrp, simple.test)
 
 #### Predict VALIDATION 
 # Simple model
-simple.valid <-predict.regsubsets(object=simple.train, newdata=valid)
+simple.valid <- exp(predict(simple.train, newdata=valid))
 metrics_galore(valid$logmsrp, simple.valid)
 
 # Complex model
