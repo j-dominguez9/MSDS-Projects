@@ -536,7 +536,6 @@ metrics_galore <-function(actual, predicted){
     names(result)<-c("ASE","MAE","RMSE","Adjusted R2")
     return(result)
 }
-
 #### Predict TEST
 # Simple model
 simple.train <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=train)
@@ -546,7 +545,9 @@ metrics_galore(test$logmsrp, simple.test)
 # Complex model
 
 # Nonparametric model
-
+np.train <- tree4
+np.test <- predict(tree4, test)
+metrics_galore(test$msrp, np.test)
 
 #### Predict VALIDATION 
 # Simple model
@@ -556,6 +557,7 @@ metrics_galore(valid$logmsrp, simple.valid)
 # Complex model
 
 # Nonparametric model
-
+np.valid <- predict(tree4, valid)
+metrics_galore(valid$msrp, np.valid)
 ```
 
