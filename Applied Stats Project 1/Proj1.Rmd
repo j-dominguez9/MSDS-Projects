@@ -270,8 +270,7 @@ mod2 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicl
 ols_vif_tol(mod2) # vif still high, remove engine_fuel_type for mod3
 mod3 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
 ols_vif_tol(mod3) # vifs look great
-ols_regress(mod3) # view model summary
-# full data metrics: adjr2=.781 rmse=.211 ase=.044
+ols_regress(mod3) # view model summary, estimates
 
 # now to test/train data
 set.seed(7)
@@ -335,9 +334,10 @@ coef(lasso.mod, s=bestlambda) # view predictors
 ```
 Fit model, assumptions check
 ```{r}
-simple <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
-ols_aic(simple) # aic = -2706.836
-ols_plot_diagnostics(simple, print_plot = FALSE)
+mod3 <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
+ols_step_forward_aic(mod3) # view aic, ss, rss, r2, adjr2 (last row)
+plot(ols_step_all_possible(mod3), print_plot = F) # view cp mallows, aic, sbic, sbc
+ols_plot_diagnostics(mod3, print_plot = FALSE)
 # residual histogram, cook's d chart looks great
 # qq plot pretty good. some veering off at both extreme ends
 # veryyyy few obs with outlier & leverage (expected for sample size this large)
