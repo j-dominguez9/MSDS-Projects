@@ -345,9 +345,56 @@ ols_plot_diagnostics(mod3, print_plot = FALSE)
 # veryyyy few obs with outlier & leverage (expected for sample size this large)
 # residual vs predicted looks good but some veering off at upper end
 ```
+
 # Complex Model
 ```{r}
+# Bar graph of vehicle size, same information as EDA boxplot
+train %>% group_by(vehicle_size) %>% summarize(avg_msrp = mean(msrp)) %>% 
+  ggplot(aes(x=vehicle_size, y=avg_msrp)) + geom_bar(stat = 'identity')
 
+# Depicting indication of engine_hp's relationship to msrp depending on vehicle_size (2-way interaction)
+train %>% ggplot(aes(x = engine_hp, y = logmsrp, color = vehicle_size)) + geom_point()
+
+# Potential indication that city_mpg depends on the year
+train %>% ggplot(aes(x = city_mpg, y = logmsrp, color = as.factor(year))) + geom_point()
+
+# Modifying train dataset to reduce engine_fuel_type categories (high VIF) and market_category(luxury brands)
+train2 <- train %>% mutate(premiumfuel = ifelse(grepl('premium',engine_fuel_type),'premium','not premium'),
+                           luxury = ifelse(grepl('Luxury',market_category),'luxury','not luxury'))
+
+# Creating same variables for test set in order to run the model using derived variables
+test2 <- test %>% mutate(premiumfuel = ifelse(grepl('premium',engine_fuel_type),'premium','not premium'),
+                         luxury = if_else(grepl('Luxury',market_category),'luxury','not luxury'))
+
+# Creating same variables for original set in order to check residual diagnostics
+cars2 <- cars %>% mutate(premiumfuel = ifelse(grepl('premium',engine_fuel_type),'premium','not premium'),
+                         luxury = if_else(grepl('Luxury',market_category),'luxury','not luxury'))
+
+# Testing out multiple models, all models include luxury variable
+# City MPG x Year 
+complexmod1 <- lm(logmsrp~popularity+engine_hp+vehicle_size+year*city_mpg+highway_mpg+engine_cylinders+engine_fuel_type+transmission_type+luxury, train2)
+
+# Engine HP x Vehicle Size
+complexmod2 <- lm(logmsrp~popularity+engine_hp*vehicle_size+year+city_mpg+highway_mpg+engine_cylinders+engine_fuel_type+transmission_type+luxury, train2)
+
+# Both interactions
+complexmod3 <- lm(logmsrp~popularity+engine_hp*vehicle_size+year*city_mpg+highway_mpg+engine_cylinders+engine_fuel_type+transmission_type+luxury, train2)
+
+summary(complexmod1)
+summary(complexmod2)
+summary(complexmod3)
+
+# Predictions based on second of three models (engine_hp x vehicle_size, +luxury)
+complex.pred <- predict(complexmod2, newdata = test2)
+
+# ASE as low as 0.02908
+testMSE_complex <- mean((ytest-complex.pred)^2)
+
+# For residual diagnostics
+checkcomplexmod2 <- lm(logmsrp~popularity+engine_hp*vehicle_size+year+city_mpg+highway_mpg+engine_cylinders+engine_fuel_type+transmission_type+luxury, cars2)
+
+# Diagnostics look fine
+ols_plot_diagnostics(checkcomplexmod2, print_plot = FALSE)
 ```
 
 # Nonparametric Model
