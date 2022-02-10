@@ -378,6 +378,10 @@ test2 <- test %>% mutate(premiumfuel = ifelse(grepl('premium',engine_fuel_type),
 cars2 <- cars %>% mutate(premiumfuel = ifelse(grepl('premium',engine_fuel_type),'premium','not premium'),
                          luxury = if_else(grepl('Luxury',market_category),'luxury','not luxury'))
 
+# Creating same variables for validation set in order to run predictions later
+valid2 <- valid %>% mutate(premiumfuel = ifelse(grepl('premium',engine_fuel_type),'premium','not premium'),
+                         luxury = if_else(grepl('Luxury',market_category),'luxury','not luxury'))
+
 # Testing out multiple models, all models include luxury variable
 # City MPG x Year 
 complexmod1 <- lm(logmsrp~popularity+engine_hp+vehicle_size+year*city_mpg+highway_mpg+engine_cylinders+engine_fuel_type+transmission_type+luxury, train2)
@@ -403,6 +407,16 @@ checkcomplexmod2 <- lm(logmsrp~popularity+engine_hp*vehicle_size+year+city_mpg+h
 
 # Diagnostics look fine
 ols_plot_diagnostics(checkcomplexmod2, print_plot = FALSE)
+
+# Validation
+complex.train <- complexmod2
+# Predict test
+complex.test <- predict(complex.train, newdata=test2)
+# Predict validate
+complex.valid <- predict(complex.train, newdata=valid2)
+
+metrics_galore(test2$logmsrp, complex.test)
+metrics_galore(valid2$logmsrp, complex.valid)
 ```
 
 # Nonparametric Model
