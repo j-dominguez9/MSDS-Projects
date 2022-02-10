@@ -450,17 +450,17 @@ treep2 <- predict(tree2, test)
 rpart.plot(tree2, type = 1, digits = 3, fallen.leaves = TRUE)
 ASE(test$msrp, treep2)
 sqrt(ASE(test$msrp, treep2))
-#model 3 with all variables and unlogged msrp
-tree3 <- rpart(msrp ~. -logmsrp, data = train, method = 'anova',
+#model 3 with all variables except model and unlogged msrp
+tree3 <- rpart(msrp ~ engine_hp + market_category + make + engine_cylinders + vehicle_size + engine_fuel_type + city_mpg + vehicle_style + highway_mpg + popularity, data = train, method = 'anova',
                     control = rpart.control(minbucket = 100))
 treep3 <- predict(tree3, test)
 rpart.plot(tree3, type = 1, digits = 3, fallen.leaves = TRUE)
 ASE(test$msrp, treep3)
 sqrt(ASE(test$msrp, treep3))
 
-#model 4 with caret all variables - performs worse but less risk of overfitting
+#model 4 with caret all variables except model - performs worse but less risk of overfitting
 trctrl <- trainControl(method = 'repeatedcv', repeats = 3, number = 10)
-tree4 <- train(msrp ~ . -logmsrp, data = train, method = "rpart2")
+tree4 <- train(msrp ~ engine_hp + market_category + make + engine_cylinders + vehicle_size + engine_fuel_type + city_mpg + vehicle_style + highway_mpg + popularity, data = train, method = "rpart2")
 treep4 <- predict(tree4, test)
 ASE(test$msrp, treep4)
 sqrt(ASE(test$msrp, treep4))
@@ -474,8 +474,8 @@ test2$predicted3 <- treep3
 test2$predicted4 <- treep4
 p1 <- test2 %>% ggplot(aes(x = predicted1, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
 p2 <- test2 %>% ggplot(aes(x = predicted2, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
-p3 <- test2 %>% ggplot(aes(x = predicted3, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
-p4 <- test2 %>% ggplot(aes(x = predicted4, y = msrp)) + geom_point() + geom_smooth(method = 'lm')
+p3 <- test2 %>% ggplot(aes(x = predicted3, y = msrp)) + geom_point() + geom_smooth(method = 'lm') + ggtitle("Regression Tree Predictions vs Actual MSRP") + xlab("Predicted MSRP")
+p4 <- test2 %>% ggplot(aes(x = predicted4, y = msrp)) + geom_point() + geom_smooth(method = 'lm') 
 
 library(cowplot)
 plot_grid(p1, p2, p3, p4)
@@ -506,19 +506,18 @@ metrics_galore(test$logmsrp, simple.test)
 # Complex model
 
 # Nonparametric model
-np.train <- tree3
+np.train <- tree
 np.test <- predict(tree3, test)
-metrics_galore(test$msrp, np.test)
+format(metrics_galore(test$msrp, np.test), scientific = FALSE)
 
 #### Predict VALIDATION 
 # Simple model
 simple.valid <-predict.regsubsets(object=simple.train, newdata=valid)
 metrics_galore(valid$logmsrp, simple.valid)
-
 # Complex model
 
 # Nonparametric model
 np.valid <- predict(tree3, valid)
-metrics_galore(valid$msrp, np.valid)
+format(metrics_galore(valid$msrp, np.valid), scientific = FALSE)
 ```
 
