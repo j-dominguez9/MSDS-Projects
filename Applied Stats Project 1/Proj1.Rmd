@@ -270,13 +270,28 @@ simple.mod.all <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engi
 ols_vif_tol(simple.mod.all) # high vif: engine_cylinders, transmission_type, city_mpg 
 
 # remove engine_cylinders; high vif: transmission type, engine_fuel_type_ city_mpg
-ols_vif_tol(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_fuel_type+vehicle_size+transmission_type, data=cars)
+ols_vif_tol(lm(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_fuel_type+vehicle_size+transmission_type, data=cars))
+
 
 # remove transmission_type; high vif: city_mpg, engine_fuel_type
 ols_vif_tol(lm(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_fuel_type+vehicle_size, data=cars))
 
 # remove city_mpg; vif of one level of engine_fuel_type a bit high but will condense this category to lower vif
 ols_vif_tol(lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars))
+
+# consolidate engine_fuel_type; did not lower vif of prem_unleaded and regular_unleaded but we'll roll with it
+cars$engine_fuel_type <- gsub("[^[:alnum:]]", "", cars$engine_fuel_type)
+unique(cars$engine_fuel_type)
+cars2$engine_fuel_type <- str_replace_all(cars2$engine_fuel_type, c(
+                        "^premiumunleadedrequired$" = "prem_unleaded", 
+                        "^premiumunleadedrecommended$" = "prem_unleaded", 
+                        "^flexfuelpremiumunleadedrecommendedE85$" = "flex_fuel_prem",
+                        "^flexfuelpremiumunleadedrequiredE85$" = "flex_fuel_prem",
+                        "^flexfuelunleadedE85$" = "flex_fuel_unleaded",
+                        "^flexfuelunleadednaturalgas$" = "flex_fuel_unleaded",
+                        "^regularunleaded$" = "regular_unleaded"
+                        ))
+unique(cars2$engine_fuel_type)
 
 simple.mod <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
 ols_vif_tol(simple.mod) # vifs look great
@@ -482,7 +497,7 @@ metrics_galore <-function(actual, predicted){
 #### Predict TEST
 # Simple model
 simple.test <- exp(predict(simple.train, newdata=test))
-metrics_galore(test$logmsrp, simple.test)
+format(metrics_galore(test$logmsrp, simple.test), scientific = FALSE)
 
 # Complex model
 
@@ -494,7 +509,8 @@ format(metrics_galore(test$msrp, np.test), scientific = FALSE)
 #### Predict VALIDATION 
 # Simple model
 simple.valid <- exp(predict(simple.train, newdata=valid))
-metrics_galore(valid$logmsrp, simple.valid)
+format(metrics_galore(valid$logmsrp, simple.valid), scientific = FALSE)
+
 # Complex model
 
 # Nonparametric model
