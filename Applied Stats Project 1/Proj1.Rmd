@@ -103,6 +103,9 @@ Plot numerical variables
 # msrp. log transform
 p1 <- cars %>% ggplot(aes(x=msrp)) + geom_histogram(bins=20)
 # logged: cars %>% ggplot(aes(x=log(msrp))) + geom_histogram(bins=20)
+unlog <- cars %>% ggplot(aes(msrp)) + geom_histogram() + labs(title= '  ', subtitle = 'Training performance on validation data', x= 'Predicted Values', y= 'MSRP') + theme_cowplot()
+log <- cars %>% ggplot(aes(logmsrp)) + geom_histogram(bins=20) + labs(title= ' ', subtitle = 'Log transformed', x='log(MSRP)', y='Count') + theme_cowplot()
+plot_grid(unlog, log)
 
 # msrp vs. year. 
 p2 <- cars %>% ggplot(aes(x=year, y=msrp)) + geom_point()
@@ -207,9 +210,9 @@ p15 <- cars %>% ggplot(aes(x=number_of_doors, y=msrp)) + geom_boxplot()
 plot_grid(p10, p11, p12, p13, p14, p15)
 ```
 
-# Simple Model
+# Analysis
 
-Split data
+## Split the data
 ```{r}
 set.seed(7)
 index <- partition(cars$logmsrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
