@@ -6,7 +6,7 @@ output: html_document
 # Data Prep
 
 Load the necessary packages
-```{r message=FALSE}
+```{r message=FALSE, warning=FALSE}
 library(tidyverse)
 library(janitor)
 library(naniar)
@@ -14,6 +14,7 @@ library(polycor)
 library(cowplot)
 library(corrplot)
 library(GGally)
+library(splitTools)
 library(leaps)
 library(olsrr)
 library(caret)
@@ -74,7 +75,7 @@ set relevant variables as factors
 factor_vars <- c("make", "model", "engine_fuel_type", "engine_cylinders", "transmission_type", "driven_wheels", "number_of_doors", "market_category", "vehicle_size", "vehicle_style")
 cars[factor_vars] <- lapply(cars[factor_vars], factor)
 ```
-Study the data: 16 variables, 9824 observations
+Study the data: 17 variables, 9824 observations
 ```{r}
 str(cars)
 summary(cars)
@@ -211,8 +212,6 @@ plot_grid(p10, p11, p12, p13, p14, p15)
 Split data
 ```{r}
 set.seed(7)
-library(splitTools) # data partition
-
 index <- partition(cars$logmsrp, p = c(train = 0.8, valid = 0.1, test = 0.1))
 train <- cars[index$train, ]
 valid <- cars[index$valid, ]
@@ -282,7 +281,7 @@ ols_vif_tol(lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+ve
 # consolidate engine_fuel_type; did not lower vif of prem_unleaded and regular_unleaded but we'll roll with it
 cars$engine_fuel_type <- gsub("[^[:alnum:]]", "", cars$engine_fuel_type)
 unique(cars$engine_fuel_type)
-cars2$engine_fuel_type <- str_replace_all(cars2$engine_fuel_type, c(
+cars$engine_fuel_type <- str_replace_all(cars$engine_fuel_type, c(
                         "^premiumunleadedrequired$" = "prem_unleaded", 
                         "^premiumunleadedrecommended$" = "prem_unleaded", 
                         "^flexfuelpremiumunleadedrecommendedE85$" = "flex_fuel_prem",
@@ -291,7 +290,7 @@ cars2$engine_fuel_type <- str_replace_all(cars2$engine_fuel_type, c(
                         "^flexfuelunleadednaturalgas$" = "flex_fuel_unleaded",
                         "^regularunleaded$" = "regular_unleaded"
                         ))
-unique(cars2$engine_fuel_type)
+unique(cars$engine_fuel_type)
 
 simple.mod <- lm(logmsrp~popularity+year+engine_hp+highway_mpg+engine_fuel_type+vehicle_size, data=cars)
 ols_vif_tol(simple.mod) # vifs look great
@@ -329,10 +328,22 @@ metrics_galore <-function(actual, predicted){
 
 metrics_galore(test$logmsrp, simple.test)
 metrics_galore(valid$logmsrp, simple.valid)
+
+# plot predicted values vs true values
+simple.test <- exp(predict(simple.train, newdata=test))
+plot.simple.test <- cbind(test, simple.test)
+uno <- plot.simple.test %>% ggplot(aes(x=simple.test, y=msrp)) + geom_point() + geom_smooth(method='lm') + labs(title = 'Simple MLR Predicted vs. True Values', subtitle = 'Training performance on test data', x= 'Predicted Values', y= 'MSRP') + theme_cowplot()
+
+# plot predicted values vs true values
+simple.valid <- exp(predict(simple.train, newdata=valid))
+plot.simple.valid <- cbind(valid, simple.valid)
+dos <- plot.simple.valid %>% ggplot(aes(x=simple.valid, y=msrp)) + geom_point() + geom_smooth(method='lm') + labs(title= '  ', subtitle = 'Training performance on validation data', x= 'Predicted Values', y= 'MSRP') + theme_cowplot()
+
+plot_grid(uno, dos)
+
 ```
 Just for kicks: Lasso with variables from simple.mod.all to compare with my custom model
 ```{r}
-library(glmnet)
 x=model.matrix(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_cylinders+engine_fuel_type+vehicle_size+transmission_type, train)
 y=train$logmsrp
 xtest<-model.matrix(logmsrp~popularity+year+engine_hp+highway_mpg+city_mpg+engine_cylinders+engine_fuel_type+vehicle_size+transmission_type, test)
@@ -497,7 +508,7 @@ metrics_galore <-function(actual, predicted){
 #### Predict TEST
 # Simple model
 simple.test <- exp(predict(simple.train, newdata=test))
-format(metrics_galore(test$logmsrp, simple.test), scientific = FALSE)
+format(metrics_galore(test$msrp, simple.test), scientific = FALSE)
 
 # Complex model
 
@@ -509,7 +520,7 @@ format(metrics_galore(test$msrp, np.test), scientific = FALSE)
 #### Predict VALIDATION 
 # Simple model
 simple.valid <- exp(predict(simple.train, newdata=valid))
-format(metrics_galore(valid$logmsrp, simple.valid), scientific = FALSE)
+format(metrics_galore(valid$msrp, simple.valid), scientific = FALSE)
 
 # Complex model
 
