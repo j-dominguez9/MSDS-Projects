@@ -143,9 +143,18 @@ plot_grid(p1, p2, p3, p4, p5, p6, labels = "AUTO", ncol = 3)
 Correlation of categorical variables 
 ```{r warning=FALSE}
 # caution: code takes a hot min to run
-hetcor(cars$msrp, cars$engine_fuel_type, cars$model, cars$make, cars$engine_cylinders, cars$transmission_type, cars$driven_wheels, cars$number_of_doors, cars$market_category, cars$vehicle_size, cars$vehicle_style)
+cat_corr <- hetcor(cars$logmsrp, cars$engine_fuel_type, cars$model, cars$make, cars$engine_cylinders, cars$transmission_type, cars$driven_wheels, cars$number_of_doors, cars$market_category, cars$vehicle_size, cars$vehicle_style)
 
-### it appears market_category has the highest correlation with msrp (0.7203), followed by engine_cylinders with 0.6. Of insignificant correlation are model (.012), driven wheels(0.055) and number of doors(.1179)
+# creating table of relevant output
+cat_corr2 <- cat_corr$correlations %>% as.data.frame()
+cat_corr2
+cat_corr_values <- cat_corr2$`cars$logmsrp` %>% as.vector()
+cat_corr_values
+names <- c('logmsrp', 'engine_fuel_type', 'model', 'make', 'engine_cylinders', 'transmission_type', 'driven_wheels', 'number_of_doors', 'market_category', 'vehicle_size', 'vehicle_style')
+corr_w_msrp <- cbind(names, as.numeric(cat_corr_values)) %>% as_tibble() %>% rename(Correlation = V2, Variables = names) %>% mutate(Correlation = as.numeric(Correlation)) %>% arrange(desc(abs(Correlation))) %>% filter(!(names == 'logmsrp'))
+corr_w_msrp
+
+### it appears market_category has the highest correlation with msrp (0.78), followed by engine_cylinders (0.65). Of insignificant correlation are model (0.012), driven_wheels(0.07) and number of doors(0.08).
 ```
 msrp vs. make, vehicle_style, and market_category (did not plot msrp vs. model bc unreadable at 65 levels)
 ```{r}
@@ -198,13 +207,13 @@ ec_levels <- cars %>% select(msrp, engine_cylinders) %>%
 
 cars$engine_cylinders <- factor(cars$engine_cylinders, ordered=TRUE, levels=ec_levels$engine_cylinders)
 
-p10 <- cars %>% ggplot(aes(x=engine_cylinders, y=msrp)) + geom_boxplot()
+p10 <- cars %>% ggplot(aes(x=engine_cylinders, y=msrp)) + geom_boxplot(color = wes_palette('GrandBudapest1', 8, type = "continuous")) + theme_cowplot()
 
 ## msrp vs. engine_fuel_type
-p11 <- cars %>% ggplot(aes(x=engine_fuel_type, y=msrp)) + geom_boxplot()
+p11 <- cars %>% ggplot(aes(x=reorder(engine_fuel_type,msrp), y=msrp)) + geom_boxplot(color = wes_palette('GrandBudapest1', 10, type = "continuous")) + theme_cowplot() + theme(axis.text.x = element_blank()) + labs(x = 'engine_fuel_type')
 
 ## msrp vs. driven_wheels
-p12 <- cars %>% ggplot(aes(x=driven_wheels, y=msrp)) + geom_boxplot()
+p12 <- cars %>% ggplot(aes(x=reorder(driven_wheels,msrp), y=msrp)) + geom_boxplot(color = wes_palette('GrandBudapest1', 4, type = "continuous")) + theme_cowplot() + labs(x = 'driven_wheels') + scale_x_discrete(labels = c('FWD', '4WD', 'RWD', 'AWD'))
 
 # msrp vs. transmission_type
 tt_levels <- cars %>% select(msrp, transmission_type) %>%
@@ -212,7 +221,7 @@ tt_levels <- cars %>% select(msrp, transmission_type) %>%
 
 cars$transmission_type <- factor(cars$transmission_type, ordered=TRUE, levels=tt_levels$transmission_type)
 
-p13 <- cars %>% ggplot(aes(y = msrp, fill = transmission_type))+geom_boxplot()
+p13 <- cars %>% ggplot(aes(x = transmission_type, y = msrp))+geom_boxplot(color = wes_palette('GrandBudapest1', 4, type = "continuous")) + theme_cowplot() + scale_x_discrete(labels = c('M', 'A', 'A_M', 'D_D'))
 
 # msrp vs. vehicle_size
 # ordering vehicle_size
@@ -221,13 +230,13 @@ vsi_levels <- cars %>% select(msrp, vehicle_size) %>%
 
 cars$vehicle_size <- factor(cars$vehicle_size, ordered=TRUE, levels=vsi_levels$vehicle_size)
 
-p14 <- cars %>% ggplot(aes(x=vehicle_size, y=msrp)) + geom_boxplot()
+p14 <- cars %>% ggplot(aes(x=vehicle_size, y=msrp)) + geom_boxplot(color = wes_palette('GrandBudapest1', 3, type = "continuous")) + theme_cowplot()
 
 ## msrp vs. number_of_doors
-p15 <- cars %>% ggplot(aes(x=number_of_doors, y=msrp)) + geom_boxplot()
+p15 <- cars %>% ggplot(aes(x=number_of_doors, y=msrp)) + geom_boxplot(color = wes_palette('GrandBudapest1', 3, type = "continuous")) + theme_cowplot()
 
 ## PLOT ALL
-plot_grid(p10, p11, p12, p13, p14, p15)
+plot_grid(p10, p11, p12, p13, p14, p15, ncol = 2)
 ```
 
 # Simple Model
