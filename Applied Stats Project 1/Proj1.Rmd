@@ -150,28 +150,37 @@ hetcor(cars$msrp, cars$engine_fuel_type, cars$model, cars$make, cars$engine_cyli
 msrp vs. make, vehicle_style, and market_category (did not plot msrp vs. model bc unreadable at 65 levels)
 ```{r}
 # msrp vs. make
-p7 <- cars %>% ggplot(aes(x=make, y=msrp)) + geom_boxplot()
+pal <- wes_palette('GrandBudapest1', 1, type = "continuous")
+
+p7 <- cars %>% ggplot(aes(x=reorder(make,msrp), y=msrp)) + 
+  geom_boxplot(color = wes_palette('GrandBudapest1', 41, type = "continuous")) +  theme_classic()+ theme(legend.position = 'none', axis.text.x = element_blank()) + labs(x = 'make')
 
 # msrp vs. vehicle_style
 vs_levels <- cars %>% select(msrp, vehicle_style) %>%
-  group_by(vehicle_style) %>% summarize(median(msrp)) %>% arrange(desc(`median(msrp)`))
+  group_by(vehicle_style) %>% summarize(median(msrp)) %>% 
+  arrange((`median(msrp)`))
 
 cars$vehicle_style <- factor(cars$vehicle_style, ordered=TRUE, levels=vs_levels$vehicle_style)
 # boxplot
-p8 <- cars %>% ggplot(aes(y = msrp, fill = vehicle_style))+geom_boxplot()
+p8 <- cars %>% ggplot(aes(x = vehicle_style, y = msrp))+
+  geom_boxplot(color = wes_palette('GrandBudapest1', 16, type = "continuous")) +
+  theme_classic() + theme(legend.position = 'none', axis.text.x = element_blank()) + labs(x = 'vehicle_style')
+
 
 # msrp vs market_category
 cars %>% select(msrp, market_category) %>%
-  ggplot(aes(x = msrp, fill=market_category))+
-  geom_histogram()+theme(legend.position='none')
+ ggplot(aes(x = msrp, fill=market_category))+
+  geom_histogram(color = pal) + theme_classic() + theme(legend.position='none')
 # boxplot
-p9 <- cars %>% ggplot(aes(x=market_category, y=msrp)) + geom_boxplot()
+p9 <- cars %>% ggplot(aes(x=reorder(market_category, msrp), y=msrp)) + 
+  geom_boxplot(color = wes_palette('GrandBudapest1', 65, type = "continuous")) + theme_classic() + theme(legend.position = 'none', axis.text.x = element_blank()) + labs(x = 'market_category')
 
 # PLOT ALL
-plot_grid(p7, p8, p9, nrow = 3)
+plot_grid(p7, p8, p9, nrow = 3, labels = 'AUTO')
 ```
 
 ```{r}
+# setting levels of market_category by mean
 mc_levels <- cars %>% select(msrp, market_category) %>%
   group_by(market_category) %>% summarize(mean(msrp)) %>% arrange((`mean(msrp)`))
 
